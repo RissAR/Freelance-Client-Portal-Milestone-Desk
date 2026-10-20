@@ -12,8 +12,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Telegram Bot
-    BOT_TOKEN: str = "dummy_token"
+    # Telegram Bot & Webhook Secrets (Defaults must remain strictly empty strings)
+    BOT_TOKEN: str = ""
+    MAKE_WEBHOOK_URL: str = ""
     WEBAPP_URL: str = "http://localhost:8000"
 
     # Application & Static Versioning

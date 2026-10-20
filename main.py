@@ -10,7 +10,9 @@ from aiogram.exceptions import TelegramUnauthorizedError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.api.routes.admin_routes import router as admin_router
 from src.api.routes.app_routes import router as app_router
+from src.api.routes.client_routes import router as client_router
 from src.bot.bot import create_bot_and_dispatcher
 from src.core.config import settings
 from src.core.database import init_db
@@ -49,16 +51,18 @@ app.add_middleware(
 
 # Include application routers
 app.include_router(app_router)
+app.include_router(client_router)
+app.include_router(admin_router)
 
 
 async def run_bot() -> None:
     """Runs aiogram bot polling if a valid BOT_TOKEN is configured."""
-    if not settings.BOT_TOKEN or settings.BOT_TOKEN in ("dummy_token", "your_bot_token_here"):
+    token = settings.BOT_TOKEN.strip()
+    if not token or token in ("dummy_token", "your_bot_token_here"):
         logger.warning(
-            "BOT_TOKEN is dummy or not set. Telegram bot polling disabled. "
+            "BOT_TOKEN is not configured. Telegram bot polling disabled. "
             "Set BOT_TOKEN in .env to enable polling."
         )
-        # Keep coroutine alive so asyncio.gather does not prematurely finish
         while True:
             await asyncio.sleep(3600)
 
@@ -91,7 +95,7 @@ async def run_server() -> None:
 
 async def main() -> None:
     """Launches FastAPI backend and aiogram bot concurrently."""
-    logger.info(f"Starting application on {settings.HOST}:{settings.PORT}...")
+    logger.info("Starting application on %s:%d...", settings.HOST, settings.PORT)
     await asyncio.gather(
         run_server(),
         run_bot(),
