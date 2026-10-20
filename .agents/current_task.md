@@ -1,108 +1,130 @@
-# Технічне завдання: Безпечний REST API, initData Криптографія, RBAC, Race Condition Lock & Make Dispatcher (Фаза 2)
+# Технічне завдання: Telegram-бот клієнта та фрілансера, Інтерактивні сповіщення та Локальний Демон (Фаза 3)
 
 ## 1. Загальний контекст
-У Фазах 0 та 1 було створено каркас, SQLite WAL базу даних, SQLAlchemy моделі та сід-скрипт.
-Мета Фази 2 — створити безпечний, надійний REST API для клієнтського порталу Telegram Mini App (TMA).
-Головні вимоги: криптографічна валідація Telegram `initData` (HMAC-SHA256), рольовий доступ (RBAC: Client vs Admin), захист від гонки станів при підписанні етапів (Race Condition / Idempotency), і фоновий неблокуючий диспетчер вебхуків у Make.com.
+У Фазах 0–2 було створено каркас, базу даних SQLite WAL, захищений REST API з криптографією `initData`, RBAC, захистом від Race Conditions та Make Dispatcher.
+Мета Фази 3 — реалізувати повнофункціонального Telegram-бота на `aiogram 3.x` з чітким розділенням ролей (Адмін/Фрілансер проти Клієнтів), інтерактивними картками сповіщень з Callback-кнопками, сервісом миттєвих сповіщень та запуском локального демона для тестування в живому Telegram.
 
 ---
 
 ## 2. КРИТИЧНЕ ПРАВИЛО БЕЗПЕКИ (Zero Secrets Leak)
-- **ЖОДНИХ реальних токенів у коді або репозиторії!**
-- У `src/core/config.py` дефолтні значення для `BOT_TOKEN` та `MAKE_WEBHOOK_URL` мають бути суворо порожніми рядками `""`.
-- Усі значення читаються тільки з файлу `.env` (який додано до `.gitignore`).
-- Оновити `.env.example` плейсхолдерами:
-  ```env
-  BOT_TOKEN=
-  MAKE_WEBHOOK_URL=
-  ```
-- **Обов'язкова перевірка перед комітом:** `git status` та `git diff --cached` не повинні містити `.env` або реальних секретів.
+- **ЖОДНИХ захардкоджених токенів, ID чи секретів у коді чи репозиторії!**
+- Усі змінні (`BOT_TOKEN`, `ADMIN_TELEGRAM_ID`, `ADMIN_USERNAME`) зчитуються виключно з файлу `.env` через `src/core/config.py`.
+- У `.env.example` наводяться лише порожні плейсхолдери.
+- Перед комітом обов'язкова перевірка `git status` та `git diff --cached` на відсутність чутливих даних.
 
 ---
 
 ## 3. Цільові файли для створення/модифікації
-- `src/core/config.py` (очищення дефолтів від секретів, додавання `MAKE_WEBHOOK_URL`)
-- `.env.example` (додавання плейсхолдера для `MAKE_WEBHOOK_URL`)
-- `src/core/security.py` (валідація Telegram initData через HMAC-SHA256 за стандартом Telegram)
-- `src/api/deps.py` (FastAPI dependencies: `get_current_user`, `require_admin`, `require_client`)
-- `src/schemas/`
-  - `src/schemas/user.py` (UserOut)
-  - `src/schemas/milestone.py` (MilestoneOut, MilestoneApproveIn)
-  - `src/schemas/project.py` (ProjectOut, ProjectDetailOut з прогресом і списком етапів)
-  - `src/schemas/ticket.py` (TicketCreateIn, TicketUpdateStatusIn, TicketOut)
-- `src/services/make_dispatcher.py` (асинхронний відправник подій у Make.com з graceful fallback)
-- `src/api/routes/client_routes.py` (ендпоінти для клієнта: отримання проекту, підписання етапу, створення тікету)
-- `src/api/routes/admin_routes.py` (ендпоінти для адміна: список проектів, зміна статусів етапів і тікетів)
-- `main.py` (підключення клієнтського та адмінського роутерів)
-- `src/scripts/test_phase2_api.py` (автоматизований тест-сьют для перевірки всіх ендпоінтів та безпеки)
+- `src/core/config.py` (додавання `ADMIN_TELEGRAM_ID: Optional[int] = None`, `ADMIN_USERNAME: str = ""`)
+- `.env.example` (додавання `ADMIN_TELEGRAM_ID=` та `ADMIN_USERNAME=`)
+- `src/api/deps.py` (автоматичне призначення ролі `UserRole.ADMIN`, якщо `telegram_id == settings.ADMIN_TELEGRAM_ID`, для всіх інших — `UserRole.CLIENT`)
+- `src/scripts/seed_initial_data.py` (підтягування `settings.ADMIN_TELEGRAM_ID` для адмінського запису в БД)
+- `src/services/notification_service.py` (сервіс відправки Telegram-сповіщень адміну та клієнтам через екземпляр бота)
+- `src/bot/handlers/`
+  - `src/bot/handlers/__init__.py`
+  - `src/bot/handlers/admin_handlers.py` (панель адміна, статистика, обробка callback-кнопок зміни статусів)
+  - `src/bot/handlers/client_handlers.py` (меню клієнта, динамічний статус проекту, кнопка запуску TMA, довідка)
+- `src/bot/bot.py` (оновлення фабрики бота, підключення роутерів адміна та клієнта, експорт синглтона/екземпляра бота для сповіщень)
+- `src/api/routes/client_routes.py` (підключення сповіщень у `BackgroundTasks` при апруві етапу та створенні тікета)
+- `src/scripts/test_phase3_bot.py` (автотести для хендлерів, фільтрів ролей та сервісу сповіщень)
 
 ---
 
 ## 4. Детальні вимоги до реалізації
 
-### 4.1. Криптографія initData (`src/core/security.py`)
-- Функція `validate_telegram_init_data(init_data: str, bot_token: str) -> dict`:
-  1. Парсить query string у ключ-значення.
-  2. Витягує `hash`.
-  3. Сортує всі інші ключі за алфавітом і об'єднує у формат `key=value\n`.
-  4. Обчислює `secret_key = HMAC_SHA256(b"WebAppData", bot_token.encode())`.
-  5. Обчислює `calculated_hash = HMAC_SHA256(secret_key, data_check_string.encode()).hexdigest()`.
-  6. Перевіряє через `hmac.compare_digest(calculated_hash, received_hash)`.
-  7. Якщо `settings.DEBUG == True` та передано dev-mock заголовки (наприклад, `mock_client` або `mock_admin`), дозволяти безпечний байпас для локальної розробки без живого бота.
-  8. Повертає словник розпарсених даних користувача (id, username, first_name, тощо).
+### 4.1. Конфігурація та RBAC узгодження
+1. У `src/core/config.py`:
+   - `ADMIN_TELEGRAM_ID: Optional[int] = None`
+   - `ADMIN_USERNAME: str = ""`
+2. У `src/api/deps.py`:
+   - При реєстрації нового або оновленні існуючого користувача:
+     ```python
+     is_admin = (settings.ADMIN_TELEGRAM_ID is not None and telegram_id == settings.ADMIN_TELEGRAM_ID)
+     user.role = UserRole.ADMIN if is_admin else UserRole.CLIENT
+     ```
+3. У `src/scripts/seed_initial_data.py`:
+   - Якщо в `.env` налаштовано `ADMIN_TELEGRAM_ID`, використовувати його для тестового адміна (якщо ні — дефолтний 8607080614 з опису).
 
-### 4.2. Рольова модель RBAC (`src/api/deps.py`)
-- Заголовок `X-Telegram-Init-Data` перевіряється в `get_current_user`:
-  - Знаходить або створює користувача в базі даних.
-- `require_admin`: якщо `user.role != UserRole.ADMIN` $\to$ `HTTPException(403, "Access denied: Admins only")`.
-- `require_client`: якщо `user.role != UserRole.CLIENT` $\to$ `HTTPException(403, "Access denied: Clients only")`.
+### 4.2. Інтерфейс Клієнта (`src/bot/handlers/client_handlers.py`)
+- Працює для всіх користувачів, чий `telegram_id != settings.ADMIN_TELEGRAM_ID`.
+- **Команда `/start`:**
+  - Шукає активний проект користувача в базі даних.
+  - **Якщо активний проект знайдено:**
+    - Виводить картку:
+      ```
+      👋 Вітаємо, {ім'я}!
+      📁 Проект: <b>{project.title}</b>
+      💰 Бюджет: <b>{project.budget} {project.currency}</b>
+      📊 Прогрес: <b>{progress}%</b>
+      📌 Поточний етап: <b>{current_milestone.title}</b> ({current_milestone.status})
+      ```
+    - Клавіатура (Reply або Inline з `WebAppInfo`):
+      `[ 🚀 Відкрити кабінет проекту ]` (TMA URL)
+      `[ 📊 Детальний статус ]`
+      `[ ℹ️ Допомога ]`
+  - **Якщо проекту немає:**
+    - Повідомлення: *"Вітаємо! У вас поки немає активних проектів. Щоб обговорити новий проект, зверніться до розробника: @{settings.ADMIN_USERNAME}"*.
+- **Команда `/status` або кнопка «📊 Детальний статус»:**
+  - Візуалізація прогресу: список усіх етапів з емодзі статусів (`✅ Затверджено`, `⏳ Очікує підтвердження`, `🛠 В роботі`, `🔒 Заблоковано`).
+- **Команда `/help` або кнопка «ℹ️ Допомога»:**
+  - Пояснення як працює кабінет, підписання актів на Canvas та залишення правок.
 
-### 4.3. Make Webhook Dispatcher (`src/services/make_dispatcher.py`)
-- Метод `send_make_event(event_name: str, payload: dict)`:
-  - Працює через `httpx.AsyncClient`.
-  - Якщо `settings.MAKE_WEBHOOK_URL` не вказано або порожній $\to$ логує `WARNING` і завершує роботу без викидання помилки (щоб API не падало без налаштованого Make).
-  - Події для відправки:
-    - `"milestone_approved"`: містить `project_id`, `project_title`, `milestone_id`, `milestone_title`, `amount`, `client_name`, `signature_data`.
-    - `"ticket_created"`: містить `ticket_id`, `project_title`, `type`, `message`, `attachment_url`, `client_name`.
+### 4.3. Пульт Фрілансера/Адміна (`src/bot/handlers/admin_handlers.py`)
+- Фільтр: спрацьовує тільки якщо `message.from_user.id == settings.ADMIN_TELEGRAM_ID`.
+- **Команда `/start` та `/admin`:**
+  - Вітання: *"👨‍💻 Панель керування проектами, @{settings.ADMIN_USERNAME}!"*
+  - Зведена статистика з БД:
+    - Кількість активних проектів.
+    - Кількість етапів у статусі `WAITING_APPROVAL` (готові до оплати/підпису).
+    - Кількість відкритих тікетів/запитань.
+  - Кнопка відкриття TMA в режимі адміністратора.
+- **Обробка CallbackQuery з інтерактивних карток сповіщень:**
+  - `admin_start_milestone:{milestone_id}`:
+    - Змінює статус етапу на `IN_PROGRESS` у БД.
+    - Оновлює повідомлення картки сповіщення з галочкою.
+    - Надсилає коротке сповіщення клієнту: *"🚀 Розробник розпочав роботу над етапом [Назва]!"*
+  - `admin_resolve_ticket:{ticket_id}`:
+    - Змінює статус тікета на `RESOLVED` у БД.
+    - Оновлює повідомлення з поміткою "Вирішено".
+    - Надсилає сповіщення клієнту про вирішення його питання.
 
-### 4.4. Клієнтські ендпоінти (`src/api/routes/client_routes.py`)
-- `GET /api/client/projects/active`:
-  - Повертає активний проект поточного клієнта (`ProjectDetailOut`):
-  - Розраховує `progress_percentage` (кількість `APPROVED` етапів / загальна кількість * 100).
-  - Включає список усіх етапів та відкритих тікетів.
-- `POST /api/client/milestones/{milestone_id}/approve`:
-  - Приймає `MilestoneApproveIn` (`signature_data: str`, `device_info: Optional[dict]`).
-  - Перевіряє, що етап належить проекту клієнта.
-  - **Захист від повторного підписання (Race condition):**
-    - Якщо статус уже `APPROVED` $\to$ повертає `409 Conflict` ("Milestone is already approved").
-  - Встановлює статус `APPROVED`, зберігає `signature_data`.
-  - **Авто-перехід наступного етапу:** знаходить наступний етап за `order_index` зі статусом `LOCKED` і переводить його в `IN_PROGRESS`.
-  - Запускає `send_make_event` через `BackgroundTasks`.
-- `POST /api/client/tickets`:
-  - Приймає `TicketCreateIn` (`milestone_id`, `type`, `message`, `attachment_url`).
-  - Створює запис `Ticket` зі статусом `OPEN`.
-  - Запускає `send_make_event` через `BackgroundTasks`.
+### 4.4. Сервіс сповіщень (`src/services/notification_service.py`)
+- Забезпечує надсилання повідомлень з використанням `bot: Bot`:
+  - `notify_admin_milestone_approved(bot, milestone, project, client_user)`:
+    - Надсилає адміну красиве повідомлення з сумою, ім'ям клієнта та кнопкою `[ 🚀 Почати наступний етап ]`.
+  - `notify_admin_ticket_created(bot, ticket, project, client_user)`:
+    - Надсилає адміну картку з типом тікета, текстом та кнопкою `[ ✅ Позначити як вирішено ]`.
+  - `notify_client(bot, client_telegram_id, text)`:
+    - Сповіщення клієнта про оновлення статусів його проекту.
+- Безпечна обробка помилок (`try/except Exception`): помилки відправки Telegram (наприклад, клієнт заблокував бота) не ламають API і логуються як `warning`.
 
-### 4.5. Адмінські ендпоінти (`src/api/routes/admin_routes.py`)
-- `GET /api/admin/projects`: список усіх проектів у системі.
-- `PATCH /api/admin/milestones/{milestone_id}/status`: примусова зміна статусу етапу адміном.
-- `PATCH /api/admin/tickets/{ticket_id}/status`: зміна статусу тікету (`OPEN` $\to$ `IN_REVIEW` $\to$ `RESOLVED`).
+### 4.5. Інтеграція з FastAPI (`src/api/routes/client_routes.py` & `main.py`)
+- Екземпляр `bot` зберігається у `app.state.bot` або експортується через синглтон/сервіс `get_bot()`.
+- У `client_routes.py` в ендпоінтах `/approve` та `/tickets` у `background_tasks` додається виклик функцій з `notification_service`.
 
-### 4.6. Автотест (`src/scripts/test_phase2_api.py`)
-- Запуск: `python -m src.scripts.test_phase2_api`
+### 4.6. Автотест (`src/scripts/test_phase3_bot.py`)
 - Перевіряє:
-  1. Відхилення невалідного `initData` (401 Unauthorized).
-  2. Успішну автентифікацію через валідні дані.
-  3. Отримання активного проекту клієнта.
-  4. Підписання етапу №2 (`WAITING_APPROVAL` $\to$ `APPROVED`), розблокування етапу №3 (`LOCKED` $\to$ `IN_PROGRESS`).
-  5. Повторне підписання етапу №2 $\to$ перевірка отримання `409 Conflict`.
-  6. Створення тікету.
-  7. Роботу Make Dispatcher у фоновому режимі без помилок.
+  1. Фільтрацію адміна: адмінські хендлери не доступні звичайним клієнтам.
+  2. Форматування повідомлень для клієнта (з проектом і без).
+  3. Коректність генерації карток сповіщень та inline-кнопок.
+  4. Обробку callback-запитів на зміну статусу етапу/тікета.
 
 ---
 
-## 5. Критерії готовності (Definition of Done)
-1. Усі нові роутери підключено в `main.py` під відповідними префіксами.
-2. Жодних захардкоджених секретів (перевірено через `git status` та `git diff --cached`).
-3. Тест `python -m src.scripts.test_phase2_api` проходить на 100% без збоїв.
-4. Надано звіт та фінальну команду git commit.
+## 5. Інструкція для локального запуску демона
+Після проходження тестів, для перевірки в реальному Telegram:
+1. Запустити локальний сервер та бота:
+   ```bash
+   .venv/bin/python3 main.py
+   ```
+2. Бот увійшов у режим polling та підтвердив з'єднання з Telegram API.
+3. Написати в Telegram боту `@clientportall_bot` команду `/start` з акаунта адміна (`8607080614`) та перевірити роботу адмін-меню.
+
+---
+
+## 6. Критерії готовності (Definition of Done)
+1. Усі нові роутери бота структуровано в `src/bot/handlers/`.
+2. Жодних захардкоджених токенів у коді — все через `.env`.
+3. Тест `python -m src.scripts.test_phase3_bot` проходить на 100%.
+4. Бот запускається локально без помилок авторизації.
+5. Надано звіт та фінальну команду git commit.
