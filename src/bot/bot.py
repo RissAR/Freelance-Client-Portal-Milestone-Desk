@@ -1,56 +1,36 @@
-"""Telegram Bot configuration and basic handlers using aiogram 3.x."""
+"""Telegram Bot configuration, handler registration, and bot instance provider."""
 
 import logging
-from aiogram import Bot, Dispatcher, Router, types
-from aiogram.filters import CommandStart, Command
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
+from aiogram import Bot, Dispatcher
 
+from src.bot.handlers.admin_handlers import router as admin_router
+from src.bot.handlers.client_handlers import router as client_router
 from src.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-router = Router(name="base_router")
+_bot_instance: Bot | None = None
 
 
-@router.message(CommandStart())
-async def command_start_handler(message: types.Message) -> None:
-    """Handles /start command and sends Mini App launch button."""
-    web_app_url = settings.WEBAPP_URL.rstrip("/") + "/app"
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text="🚀 Open Client Portal",
-                    web_app=WebAppInfo(url=web_app_url),
-                )
-            ]
-        ]
-    )
-    await message.answer(
-        f"👋 Вітаємо у <b>Client Portal & Milestone Desk</b>!\n\n"
-        f"Тут ви можете переглядати етапи проекту, підписувати акти робіт "
-        f"та залишати коментарі.\n\n"
-        f"Натисніть кнопку нижче, щоб відкрити портал:",
-        reply_markup=keyboard,
-        parse_mode="HTML",
-    )
-
-
-@router.message(Command("help"))
-async def command_help_handler(message: types.Message) -> None:
-    """Handles /help command."""
-    await message.answer(
-        "ℹ️ <b>Client Portal & Milestone Desk Bot</b>\n\n"
-        "Команди:\n"
-        "/start - Відкрити головне меню та Mini App\n"
-        "/help - Довідка по використанню порталу",
-        parse_mode="HTML",
-    )
+def get_bot() -> Bot | None:
+    """Returns the singleton Bot instance for sending notifications."""
+    global _bot_instance
+    if _bot_instance is None and settings.BOT_TOKEN:
+        _bot_instance = Bot(token=settings.BOT_TOKEN)
+    return _bot_instance
 
 
 def create_bot_and_dispatcher() -> tuple[Bot, Dispatcher]:
-    """Factory creating configured aiogram Bot and Dispatcher."""
+    """Factory creating configured aiogram Bot and Dispatcher with admin and client routers."""
+    global _bot_instance
+
     bot = Bot(token=settings.BOT_TOKEN)
+    _bot_instance = bot
+
     dp = Dispatcher()
-    dp.include_router(router)
+
+    # Register admin router before client router to ensure correct priority
+    dp.include_router(admin_router)
+    dp.include_router(client_router)
+
     return bot, dp

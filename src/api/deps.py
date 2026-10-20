@@ -7,6 +7,7 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.core.config import settings
 from src.core.database import get_db
 from src.core.security import validate_telegram_init_data
 from src.models import User, UserRole
@@ -20,7 +21,8 @@ async def get_current_user(
 ) -> User:
     """Authenticates request using Telegram WebApp initData header.
 
-    Finds existing user or creates a new client user on first login.
+    Finds existing user or registers a new user with proper RBAC role assignment
+    based on settings.ADMIN_TELEGRAM_ID.
     """
     if not x_telegram_init_data:
         raise HTTPException(
@@ -38,16 +40,18 @@ async def get_current_user(
         ) from exc
 
     telegram_id = user_info["telegram_id"]
+    is_admin = settings.ADMIN_TELEGRAM_ID is not None and telegram_id == settings.ADMIN_TELEGRAM_ID
+    target_role = UserRole.ADMIN if is_admin else UserRole.CLIENT
 
     stmt = select(User).where(User.telegram_id == telegram_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
 
     if not user:
-        # Register new client user
+        # Register new user with designated role
         user = User(
             telegram_id=telegram_id,
-            role=UserRole.CLIENT,
+            role=target_role,
             full_name=user_info["full_name"],
             username=user_info.get("username"),
         )
@@ -56,8 +60,11 @@ async def get_current_user(
         await db.refresh(user)
         logger.info("Created new user id=%d (tg_id=%d, role=%s)", user.id, telegram_id, user.role)
     else:
-        # Keep profile updated if name or username changed
+        # Keep profile updated if name, username or admin role changed
         updated = False
+        if is_admin and user.role != UserRole.ADMIN:
+            user.role = UserRole.ADMIN
+            updated = True
         if user.full_name != user_info["full_name"]:
             user.full_name = user_info["full_name"]
             updated = True

@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.routes.admin_routes import router as admin_router
 from src.api.routes.app_routes import router as app_router
 from src.api.routes.client_routes import router as client_router
-from src.bot.bot import create_bot_and_dispatcher
+from src.bot.bot import create_bot_and_dispatcher, get_bot
 from src.core.config import settings
 from src.core.database import init_db
 
@@ -30,6 +30,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Initializing database tables...")
     await init_db()
     logger.info("Database initialized successfully.")
+
+    # Expose bot instance in app.state
+    app.state.bot = get_bot()
+
     yield
     logger.info("Shutting down application...")
 

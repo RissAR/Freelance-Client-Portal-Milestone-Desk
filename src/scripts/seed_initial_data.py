@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 
+from src.core.config import settings
 from src.core.database import async_session_factory, init_db
 from src.models import (
     Milestone,
@@ -28,21 +29,44 @@ async def seed_data() -> None:
     logger.info("Initializing database tables...")
     await init_db()
 
+    admin_telegram_id = settings.ADMIN_TELEGRAM_ID or 8607080614
+    admin_username = settings.ADMIN_USERNAME or "freelance_lead"
+
     async with async_session_factory() as session:
         # Check if project already exists to ensure idempotency
         stmt = select(Project).where(Project.title == "Розробка E-commerce Mini App")
         existing_project = (await session.execute(stmt)).scalar_one_or_none()
 
         if existing_project:
-            logger.info("Test project already exists. Database is already seeded.")
+            logger.info("Test project already exists. Ensuring admin role is aligned...")
+            # Check if user with admin_telegram_id already exists
+            user_by_tg = (
+                await session.execute(select(User).where(User.telegram_id == admin_telegram_id))
+            ).scalar_one_or_none()
+            if user_by_tg:
+                user_by_tg.role = UserRole.ADMIN
+                if admin_username:
+                    user_by_tg.username = admin_username
+                await session.commit()
+                logger.info("Aligned existing user %d to ADMIN role", admin_telegram_id)
+            else:
+                existing_admin = (
+                    await session.execute(select(User).where(User.role == UserRole.ADMIN))
+                ).scalar_one_or_none()
+                if existing_admin:
+                    existing_admin.telegram_id = admin_telegram_id
+                    if admin_username:
+                        existing_admin.username = admin_username
+                    await session.commit()
+                    logger.info("Updated admin record telegram_id to %d", admin_telegram_id)
             return
 
         logger.info("Seeding users...")
         admin = User(
-            telegram_id=111111111,
+            telegram_id=admin_telegram_id,
             role=UserRole.ADMIN,
             full_name="Freelance Lead (Admin)",
-            username="freelance_lead",
+            username=admin_username,
         )
         client = User(
             telegram_id=222222222,

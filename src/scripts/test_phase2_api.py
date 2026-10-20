@@ -4,12 +4,13 @@ import asyncio
 import logging
 import sys
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import select
 
 from main import app
 from src.core.config import settings
-from src.core.database import init_db
+from src.core.database import async_session_factory, init_db
 from src.core.security import create_test_init_data
-from src.models.enums import MilestoneStatus, TicketStatus, TicketType
+from src.models import Milestone, MilestoneStatus, Project, TicketStatus, TicketType
 from src.scripts.seed_initial_data import seed_data
 from src.services.make_dispatcher import send_make_event
 
@@ -23,9 +24,24 @@ async def run_tests() -> None:
     """Executes all Phase 2 integration and unit tests."""
     logger.info("Setting up test database and configuration...")
     settings.BOT_TOKEN = TEST_BOT_TOKEN
+    settings.ADMIN_TELEGRAM_ID = 111111111
     settings.DEBUG = False
     await init_db()
     await seed_data()
+
+    # Reset test milestones to initial state for idempotency across runs
+    async with async_session_factory() as session:
+        stmt = select(Milestone).join(Project).where(Project.title == "Розробка E-commerce Mini App")
+        for m in (await session.execute(stmt)).scalars().all():
+            if m.order_index == 1:
+                m.status = MilestoneStatus.APPROVED
+            elif m.order_index == 2:
+                m.status = MilestoneStatus.WAITING_APPROVAL
+                m.signature_data = None
+            elif m.order_index == 3:
+                m.status = MilestoneStatus.LOCKED
+                m.signature_data = None
+        await session.commit()
 
     # Generate cryptographically signed initData
     client_init_data = create_test_init_data(
@@ -178,6 +194,7 @@ async def run_tests() -> None:
 
     # Reset test bot token to default empty string to uphold Zero Secrets Leak
     settings.BOT_TOKEN = ""
+    settings.ADMIN_TELEGRAM_ID = None
     logger.info("All Phase 2 API and Security tests PASSED 100%!")
 
 

@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     MAKE_WEBHOOK_URL: str = ""
     WEBAPP_URL: str = "http://localhost:8000"
 
+    # Administrator Settings (Defaults must remain empty/None)
+    ADMIN_TELEGRAM_ID: int | None = None
+    ADMIN_USERNAME: str = ""
+
     # Application & Static Versioning
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False

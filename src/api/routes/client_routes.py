@@ -10,10 +10,15 @@ from sqlalchemy.orm import selectinload
 
 from src.api.deps import require_client
 from src.api.routes.app_routes import apply_anti_cache_headers
+from src.bot.bot import get_bot
 from src.core.database import get_db
 from src.models import Milestone, MilestoneStatus, Project, ProjectStatus, Ticket, TicketStatus, User
 from src.schemas import MilestoneApproveIn, MilestoneOut, ProjectDetailOut, TicketCreateIn, TicketOut
 from src.services.make_dispatcher import send_make_event
+from src.services.notification_service import (
+    notify_admin_milestone_approved,
+    notify_admin_ticket_created,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -84,8 +89,8 @@ async def approve_milestone(
 ) -> Milestone:
     """Client approves milestone with digital canvas signature.
 
-    Includes race-condition protection (409 Conflict if already approved)
-    and unlocks the subsequent locked milestone.
+    Includes race-condition protection (409 Conflict if already approved),
+    unlocks the subsequent locked milestone, and triggers Telegram and Make.com notifications.
     """
     stmt = (
         select(Milestone)
@@ -138,7 +143,7 @@ async def approve_milestone(
     await db.commit()
     await db.refresh(milestone)
 
-    # 4. Trigger non-blocking Make.com webhook via BackgroundTasks
+    # 4. Trigger Make.com webhook via BackgroundTasks
     background_tasks.add_task(
         send_make_event,
         event_name="milestone_approved",
@@ -151,6 +156,20 @@ async def approve_milestone(
             "client_name": current_user.full_name,
             "signature_data": milestone.signature_data,
         },
+    )
+
+    # 5. Trigger Telegram admin notification via BackgroundTasks
+    bot = get_bot()
+    background_tasks.add_task(
+        notify_admin_milestone_approved,
+        bot=bot,
+        milestone_id=milestone.id,
+        milestone_title=milestone.title,
+        amount=milestone.amount,
+        currency=milestone.project.currency,
+        project_title=milestone.project.title,
+        client_name=current_user.full_name,
+        next_milestone_id=next_milestone.id if next_milestone else None,
     )
 
     return milestone
@@ -213,6 +232,19 @@ async def create_ticket(
             "attachment_url": ticket.attachment_url,
             "client_name": current_user.full_name,
         },
+    )
+
+    # Trigger Telegram admin notification in background
+    bot = get_bot()
+    background_tasks.add_task(
+        notify_admin_ticket_created,
+        bot=bot,
+        ticket_id=ticket.id,
+        ticket_type=ticket.type.value,
+        message_text=ticket.message,
+        project_title=project.title,
+        client_name=current_user.full_name,
+        attachment_url=ticket.attachment_url,
     )
 
     return ticket
