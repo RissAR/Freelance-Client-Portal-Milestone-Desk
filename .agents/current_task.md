@@ -1,130 +1,75 @@
-# Технічне завдання: Telegram-бот клієнта та фрілансера, Інтерактивні сповіщення та Локальний Демон (Фаза 3)
+# Технічне завдання: Комплексний аудит безпеки та надійності кодової бази (Security & Code Correctness Audit)
 
 ## 1. Загальний контекст
-У Фазах 0–2 було створено каркас, базу даних SQLite WAL, захищений REST API з криптографією `initData`, RBAC, захистом від Race Conditions та Make Dispatcher.
-Мета Фази 3 — реалізувати повнофункціонального Telegram-бота на `aiogram 3.x` з чітким розділенням ролей (Адмін/Фрілансер проти Клієнтів), інтерактивними картками сповіщень з Callback-кнопками, сервісом миттєвих сповіщень та запуском локального демона для тестування в живому Telegram.
+Після реалізації бази даних (Фаза 1), REST API з RBAC (Фаза 2) та Telegram-бота зі сповіщеннями (Фаза 3) проводиться окремий позачерговий аудит безпеки.
+Мета аудиту — закрити потенційні вразливості (Replay attacks, Telegram HTML Injection, IDOR, переповнення пам'яті підписом Canvas, race conditions), зміцнити валідацію вхідних даних та створити автоматичний скрипт аудиту для регулярних перевірок.
 
 ---
 
 ## 2. КРИТИЧНЕ ПРАВИЛО БЕЗПЕКИ (Zero Secrets Leak)
-- **ЖОДНИХ захардкоджених токенів, ID чи секретів у коді чи репозиторії!**
-- Усі змінні (`BOT_TOKEN`, `ADMIN_TELEGRAM_ID`, `ADMIN_USERNAME`) зчитуються виключно з файлу `.env` через `src/core/config.py`.
-- У `.env.example` наводяться лише порожні плейсхолдери.
-- Перед комітом обов'язкова перевірка `git status` та `git diff --cached` на відсутність чутливих даних.
+- **Сувора заборона на будь-які секрети чи токени в коді.**
+- Навіть у тестових скриптах заборонено створювати рядки, схожі на токени (шаблон `[0-9]{8,12}:[a-zA-Z0-9_-]{30,40}`). Використовувати тільки безпечні моки (наприклад, `"mock_test_token"`).
+- Перед комітом обов'язково запустити `python3 scripts/security_check.py`.
 
 ---
 
-## 3. Цільові файли для створення/модифікації
-- `src/core/config.py` (додавання `ADMIN_TELEGRAM_ID: Optional[int] = None`, `ADMIN_USERNAME: str = ""`)
-- `.env.example` (додавання `ADMIN_TELEGRAM_ID=` та `ADMIN_USERNAME=`)
-- `src/api/deps.py` (автоматичне призначення ролі `UserRole.ADMIN`, якщо `telegram_id == settings.ADMIN_TELEGRAM_ID`, для всіх інших — `UserRole.CLIENT`)
-- `src/scripts/seed_initial_data.py` (підтягування `settings.ADMIN_TELEGRAM_ID` для адмінського запису в БД)
-- `src/services/notification_service.py` (сервіс відправки Telegram-сповіщень адміну та клієнтам через екземпляр бота)
-- `src/bot/handlers/`
-  - `src/bot/handlers/__init__.py`
-  - `src/bot/handlers/admin_handlers.py` (панель адміна, статистика, обробка callback-кнопок зміни статусів)
-  - `src/bot/handlers/client_handlers.py` (меню клієнта, динамічний статус проекту, кнопка запуску TMA, довідка)
-- `src/bot/bot.py` (оновлення фабрики бота, підключення роутерів адміна та клієнта, експорт синглтона/екземпляра бота для сповіщень)
-- `src/api/routes/client_routes.py` (підключення сповіщень у `BackgroundTasks` при апруві етапу та створенні тікета)
-- `src/scripts/test_phase3_bot.py` (автотести для хендлерів, фільтрів ролей та сервісу сповіщень)
+## 3. Цільові файли для аудиту та доопрацювання
+- `src/core/security.py` (додавання перевірки `auth_date` на захист від Replay-атак)
+- `src/services/notification_service.py` (екранування HTML-символів через `html.escape` для запобігання падінням aiogram)
+- `src/schemas/milestone.py` (обмеження максимального розміру підпису `signature_data` до 200 КБ та валідація префіксу)
+- `src/schemas/ticket.py` (валідація протоколів `http://` / `https://` для `attachment_url` проти небезпечних URI)
+- `src/api/routes/client_routes.py` (перевірка обробки транзакцій та IDOR)
+- `src/scripts/audit_security_and_code.py` (новий комплексний скрипт перевірки всіх 6 векторів безпеки)
 
 ---
 
-## 4. Детальні вимоги до реалізації
+## 4. Детальні вимоги аудиту за векторами
 
-### 4.1. Конфігурація та RBAC узгодження
-1. У `src/core/config.py`:
-   - `ADMIN_TELEGRAM_ID: Optional[int] = None`
-   - `ADMIN_USERNAME: str = ""`
-2. У `src/api/deps.py`:
-   - При реєстрації нового або оновленні існуючого користувача:
-     ```python
-     is_admin = (settings.ADMIN_TELEGRAM_ID is not None and telegram_id == settings.ADMIN_TELEGRAM_ID)
-     user.role = UserRole.ADMIN if is_admin else UserRole.CLIENT
-     ```
-3. У `src/scripts/seed_initial_data.py`:
-   - Якщо в `.env` налаштовано `ADMIN_TELEGRAM_ID`, використовувати його для тестового адміна (якщо ні — дефолтний 8607080614 з опису).
+### Вектор 1. Захист від Replay Attacks у Telegram `initData` (`src/core/security.py`)
+- **Проблема:** Перехоплений валідний `initData` може повторно використовуватися зловмисником безкінечно.
+- **Вимога:**
+  - Додати параметр `max_age_seconds: int = 86400` (24 години) у `validate_telegram_init_data`.
+  - Отримувати `auth_date` із параметрів. Якщо `auth_date` відсутній або `current_time - auth_date > max_age_seconds` $\to$ викидати `ValueError("Telegram initData is expired (older than 24 hours)")`.
+  - Якщо `auth_date > current_time + 60` (мітка з майбутнього) $\to$ викидати `ValueError("Telegram initData timestamp is in the future")`.
+  - Для локальних тестів із `mock_client` чи `DEBUG=True` дозволити пропуск перевірки `auth_date`.
 
-### 4.2. Інтерфейс Клієнта (`src/bot/handlers/client_handlers.py`)
-- Працює для всіх користувачів, чий `telegram_id != settings.ADMIN_TELEGRAM_ID`.
-- **Команда `/start`:**
-  - Шукає активний проект користувача в базі даних.
-  - **Якщо активний проект знайдено:**
-    - Виводить картку:
-      ```
-      👋 Вітаємо, {ім'я}!
-      📁 Проект: <b>{project.title}</b>
-      💰 Бюджет: <b>{project.budget} {project.currency}</b>
-      📊 Прогрес: <b>{progress}%</b>
-      📌 Поточний етап: <b>{current_milestone.title}</b> ({current_milestone.status})
-      ```
-    - Клавіатура (Reply або Inline з `WebAppInfo`):
-      `[ 🚀 Відкрити кабінет проекту ]` (TMA URL)
-      `[ 📊 Детальний статус ]`
-      `[ ℹ️ Допомога ]`
-  - **Якщо проекту немає:**
-    - Повідомлення: *"Вітаємо! У вас поки немає активних проектів. Щоб обговорити новий проект, зверніться до розробника: @{settings.ADMIN_USERNAME}"*.
-- **Команда `/status` або кнопка «📊 Детальний статус»:**
-  - Візуалізація прогресу: список усіх етапів з емодзі статусів (`✅ Затверджено`, `⏳ Очікує підтвердження`, `🛠 В роботі`, `🔒 Заблоковано`).
-- **Команда `/help` або кнопка «ℹ️ Допомога»:**
-  - Пояснення як працює кабінет, підписання актів на Canvas та залишення правок.
+### Вектор 2. Захист від Telegram HTML Injection та збоїв парсера (`src/services/notification_service.py`)
+- **Проблема:** Якщо клієнт напише повідомлення із символами `<`, `>`, `&` (наприклад, `"Перевірте a < b & c > d"`), aiogram впаде з помилкою `TelegramBadRequest: can't parse entities: Unexpected token` і сповіщення адміну не дійде.
+- **Вимога:**
+  - Імпортувати `import html` у `notification_service.py`.
+  - Усі користувацькі змінні, що підставляються у повідомлення з `parse_mode="HTML"` (`project_title`, `client_name`, `message_text`, `milestone_title`), обов'язково обгортати у `html.escape()`.
 
-### 4.3. Пульт Фрілансера/Адміна (`src/bot/handlers/admin_handlers.py`)
-- Фільтр: спрацьовує тільки якщо `message.from_user.id == settings.ADMIN_TELEGRAM_ID`.
-- **Команда `/start` та `/admin`:**
-  - Вітання: *"👨‍💻 Панель керування проектами, @{settings.ADMIN_USERNAME}!"*
-  - Зведена статистика з БД:
-    - Кількість активних проектів.
-    - Кількість етапів у статусі `WAITING_APPROVAL` (готові до оплати/підпису).
-    - Кількість відкритих тікетів/запитань.
-  - Кнопка відкриття TMA в режимі адміністратора.
-- **Обробка CallbackQuery з інтерактивних карток сповіщень:**
-  - `admin_start_milestone:{milestone_id}`:
-    - Змінює статус етапу на `IN_PROGRESS` у БД.
-    - Оновлює повідомлення картки сповіщення з галочкою.
-    - Надсилає коротке сповіщення клієнту: *"🚀 Розробник розпочав роботу над етапом [Назва]!"*
-  - `admin_resolve_ticket:{ticket_id}`:
-    - Змінює статус тікета на `RESOLVED` у БД.
-    - Оновлює повідомлення з поміткою "Вирішено".
-    - Надсилає сповіщення клієнту про вирішення його питання.
+### Вектор 3. Захист від переповнення пам'яті через Canvas підпис (`src/schemas/milestone.py`)
+- **Проблема:** Поле `signature_data` має лише `min_length=10`. Зловмисник може надіслати 50 МБ довільного тексту і роздути пам'ять сервера або БД.
+- **Вимога:**
+  - Встановити суворе обмеження: `max_length=200_000` (200 КБ — з головою вистачає для стиснутого Base64 PNG підпису).
+  - Додати Pydantic validator: рядок повинен починатися з `data:image/` або бути валідним хешем/base64.
 
-### 4.4. Сервіс сповіщень (`src/services/notification_service.py`)
-- Забезпечує надсилання повідомлень з використанням `bot: Bot`:
-  - `notify_admin_milestone_approved(bot, milestone, project, client_user)`:
-    - Надсилає адміну красиве повідомлення з сумою, ім'ям клієнта та кнопкою `[ 🚀 Почати наступний етап ]`.
-  - `notify_admin_ticket_created(bot, ticket, project, client_user)`:
-    - Надсилає адміну картку з типом тікета, текстом та кнопкою `[ ✅ Позначити як вирішено ]`.
-  - `notify_client(bot, client_telegram_id, text)`:
-    - Сповіщення клієнта про оновлення статусів його проекту.
-- Безпечна обробка помилок (`try/except Exception`): помилки відправки Telegram (наприклад, клієнт заблокував бота) не ламають API і логуються як `warning`.
+### Вектор 4. Безпека URL вкладень у тікетах (`src/schemas/ticket.py`)
+- **Проблема:** Поле `attachment_url` може містити небезпечні схеми на кшталт `javascript:alert(1)`.
+- **Вимога:**
+  - Додати валідатор, який дозволяє лише протоколи `http://` або `https://` (або `None`). Будь-які інші значення повинні повертати помилку валідації 422.
 
-### 4.5. Інтеграція з FastAPI (`src/api/routes/client_routes.py` & `main.py`)
-- Екземпляр `bot` зберігається у `app.state.bot` або експортується через синглтон/сервіс `get_bot()`.
-- У `client_routes.py` в ендпоінтах `/approve` та `/tickets` у `background_tasks` додається виклик функцій з `notification_service`.
+### Вектор 5. Захист від IDOR та Race Conditions
+- Перевірити у `client_routes.py`:
+  - Клієнт не може підписати етап іншого клієнта (повертає 404).
+  - При спробі повторного підписання етапу у статусі `APPROVED` повертається суворо `409 Conflict`.
+  - Автоматичне розблокування наступного етапу (`LOCKED` $\to$ `IN_PROGRESS`) відбувається в межах однієї транзакції.
 
-### 4.6. Автотест (`src/scripts/test_phase3_bot.py`)
-- Перевіряє:
-  1. Фільтрацію адміна: адмінські хендлери не доступні звичайним клієнтам.
-  2. Форматування повідомлень для клієнта (з проектом і без).
-  3. Коректність генерації карток сповіщень та inline-кнопок.
-  4. Обробку callback-запитів на зміну статусу етапу/тікета.
+### Вектор 6. Автоматичний скрипт аудиту (`src/scripts/audit_security_and_code.py`)
+- Створити виконуваний тестовий скрипт, який перевіряє:
+  1. **Replay Attack Test:** Спроба входу із `auth_date`, старшим за 25 годин $\to$ повертає 401 Unauthorized.
+  2. **HTML Injection Test:** Відправка тікету з текстом `<b>Test</b> & <script>alert(1)</script> <fail>` $\to$ формується валідне екрановане повідомлення без помилок aiogram.
+  3. **Signature Payload Limit Test:** Відправка підпису розміром 250 КБ $\to$ повертає 422 Unprocessable Entity.
+  4. **Malicious URL Test:** Відправка тікету з `attachment_url="javascript:attack()"` $\to$ повертає 422.
+  5. **IDOR Test:** Спроба клієнта затвердити етап із неіснуючим ID або чужого проекту $\to$ повертає 404 Not Found.
+  6. **Security Scanner Run:** Виклик `scripts/security_check.py` $\to$ повертає код 0 (жодних витоків).
 
 ---
 
-## 5. Інструкція для локального запуску демона
-Після проходження тестів, для перевірки в реальному Telegram:
-1. Запустити локальний сервер та бота:
-   ```bash
-   .venv/bin/python3 main.py
-   ```
-2. Бот увійшов у режим polling та підтвердив з'єднання з Telegram API.
-3. Написати в Telegram боту `@clientportall_bot` команду `/start` з акаунта адміна (`8607080614`) та перевірити роботу адмін-меню.
-
----
-
-## 6. Критерії готовності (Definition of Done)
-1. Усі нові роутери бота структуровано в `src/bot/handlers/`.
-2. Жодних захардкоджених токенів у коді — все через `.env`.
-3. Тест `python -m src.scripts.test_phase3_bot` проходить на 100%.
-4. Бот запускається локально без помилок авторизації.
+## 5. Критерії готовності (Definition of Done)
+1. Усі 5 виправлень безпеки внесено до відповідних файлів.
+2. Скрипт `python3 -m src.scripts.audit_security_and_code` успішно виконує всі 6 тестів на 100%.
+3. `python3 scripts/security_check.py` проходить успішно.
+4. Попередні тести `test_phase2_api` та `test_phase3_bot` не поламані та проходять без помилок.
 5. Надано звіт та фінальну команду git commit.
