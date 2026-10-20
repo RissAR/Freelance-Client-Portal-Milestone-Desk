@@ -17,7 +17,7 @@ from src.services.make_dispatcher import send_make_event
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("test_phase2")
 
-TEST_BOT_TOKEN = "123456789:AAHtestTokenForPhase2ValidationOnly"
+TEST_BOT_TOKEN = "mock_test_token_phase2"
 
 
 async def run_tests() -> None:

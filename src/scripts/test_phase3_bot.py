@@ -68,7 +68,7 @@ async def run_tests() -> None:
     logger.info("Initializing configuration and seeding test database...")
     settings.ADMIN_TELEGRAM_ID = TEST_ADMIN_ID
     settings.ADMIN_USERNAME = "test_lead"
-    settings.BOT_TOKEN = "123456:testBotToken"
+    settings.BOT_TOKEN = "mock_test_token_phase3"
 
     await init_db()
     await seed_data()
