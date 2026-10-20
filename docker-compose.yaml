@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: client_portal_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./backups:/app/backups
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN:-dummy_token}
+      - WEBAPP_URL=${WEBAPP_URL:-http://localhost:8000}
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=${DEBUG:-false}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - DATABASE_URL=sqlite+aiosqlite:///./data/app.db
+    env_file:
+      - path: .env
+        required: false
