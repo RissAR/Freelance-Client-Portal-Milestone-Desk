@@ -5,6 +5,7 @@ import hmac
 import json
 import logging
 import urllib.parse
+from datetime import datetime, timezone
 from typing import Any
 
 from src.core.config import settings
@@ -23,7 +24,7 @@ def validate_telegram_init_data(init_data: str, bot_token: str | None = None) ->
         dict: Parsed user data containing telegram_id, full_name, username, etc.
 
     Raises:
-        ValueError: If data is invalid, signature mismatch, or token is missing.
+        ValueError: If data is invalid, signature mismatch, expired, or token is missing.
     """
     token = bot_token or settings.BOT_TOKEN
 
@@ -82,7 +83,20 @@ def validate_telegram_init_data(init_data: str, bot_token: str | None = None) ->
     if not hmac.compare_digest(calculated_hash, received_hash):
         raise ValueError("Invalid Telegram initData signature: hash mismatch.")
 
-    # 5. Extract user data
+    # 5. Check auth_date freshness (must be <= 24 hours old / 86400 seconds)
+    auth_date_raw = data_dict.get("auth_date")
+    if auth_date_raw:
+        try:
+            auth_timestamp = int(auth_date_raw)
+            current_timestamp = int(datetime.now(timezone.utc).timestamp())
+            if current_timestamp - auth_timestamp > 86400:
+                raise ValueError("Telegram initData expired: signature is older than 24 hours.")
+        except (TypeError, ValueError) as exc:
+            if "expired" in str(exc):
+                raise
+            logger.warning("Unparseable auth_date in initData: %s", auth_date_raw)
+
+    # 6. Extract user data
     user_payload: dict[str, Any] = {}
     if "user" in data_dict:
         try:
@@ -116,14 +130,15 @@ def create_test_init_data(user_dict: dict[str, Any], bot_token: str, auth_date: 
     Args:
         user_dict: Dictionary with user fields (e.g. {"id": 12345, "first_name": "Test"}).
         bot_token: Bot token to sign with.
-        auth_date: Optional unix timestamp. Defaults to 1700000000.
+        auth_date: Optional unix timestamp. Defaults to current timestamp.
 
     Returns:
         str: Encoded Telegram initData string with valid 'hash'.
     """
     user_json = json.dumps(user_dict, separators=(",", ":"))
+    current_ts = int(datetime.now(timezone.utc).timestamp())
     params = {
-        "auth_date": str(auth_date or 1700000000),
+        "auth_date": str(auth_date or current_ts),
         "query_id": "AAHdF6IQAAAAAN0XohD72u_6",
         "user": user_json,
     }

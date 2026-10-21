@@ -1,9 +1,9 @@
-"""Service for sending formatted Telegram notifications to admin and clients."""
+"""Service for sending formatted Telegram notifications to admin and clients with HTML escaping."""
 
+import html
 import logging
-from typing import Any
 from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 
 from src.core.config import settings
 
@@ -27,12 +27,17 @@ async def notify_admin_milestone_approved(
         )
         return False
 
+    escaped_project = html.escape(project_title)
+    escaped_milestone = html.escape(milestone_title)
+    escaped_client = html.escape(client_name)
+    escaped_currency = html.escape(currency)
+
     text = (
         f"🎉 <b>Етап проекту затверджено клієнтом!</b>\n\n"
-        f"📁 Проект: <b>{project_title}</b>\n"
-        f"📌 Етап: <b>{milestone_title}</b> (id: #{milestone_id})\n"
-        f"💰 Сума: <b>{amount:,.2f} {currency}</b>\n"
-        f"👤 Клієнт: <b>{client_name}</b>\n"
+        f"📁 Проект: <b>{escaped_project}</b>\n"
+        f"📌 Етап: <b>{escaped_milestone}</b> (id: #{milestone_id})\n"
+        f"💰 Сума: <b>{amount:,.2f} {escaped_currency}</b>\n"
+        f"👤 Клієнт: <b>{escaped_client}</b>\n"
         f"✍️ <i>Цифровий підпис збережено в системі.</i>\n"
     )
 
@@ -81,15 +86,21 @@ async def notify_admin_ticket_created(
         return False
 
     type_icon = "🐛" if ticket_type == "BUG" else "✏️" if ticket_type == "REVISION" else "❓"
+    escaped_project = html.escape(project_title)
+    escaped_client = html.escape(client_name)
+    escaped_type = html.escape(ticket_type)
+    escaped_msg = html.escape(message_text)
+
     text = (
         f"{type_icon} <b>Новий тікет від клієнта #{ticket_id}</b>\n\n"
-        f"📁 Проект: <b>{project_title}</b>\n"
-        f"👤 Клієнт: <b>{client_name}</b>\n"
-        f"🏷 Тип: <b>{ticket_type}</b>\n"
-        f"📝 Повідомлення:\n<i>{message_text}</i>\n"
+        f"📁 Проект: <b>{escaped_project}</b>\n"
+        f"👤 Клієнт: <b>{escaped_client}</b>\n"
+        f"🏷 Тип: <b>{escaped_type}</b>\n"
+        f"📝 Повідомлення:\n<i>{escaped_msg}</i>\n"
     )
     if attachment_url:
-        text += f"\n📎 Вкладення: <a href='{attachment_url}'>Переглянути файл</a>\n"
+        escaped_url = html.escape(attachment_url, quote=True)
+        text += f"\n📎 Вкладення: <a href='{escaped_url}'>Переглянути файл</a>\n"
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -139,4 +150,47 @@ async def notify_client(
         return True
     except Exception as exc:
         logger.warning("Failed to notify client %d: %s", client_telegram_id, exc)
+        return False
+
+
+async def notify_client_milestone_reminder(
+    bot: Bot | None,
+    client_telegram_id: int,
+    milestone_title: str,
+) -> bool:
+    """Sends a polite milestone review and signing reminder to client."""
+    if not bot or not settings.BOT_TOKEN:
+        logger.warning("Cannot send client reminder: bot is not configured.")
+        return False
+
+    escaped_title = html.escape(milestone_title)
+    text = (
+        f"⏳ <b>Привіт!</b>\n\n"
+        f"Етап <b>«{escaped_title}»</b> готовий до перегляду та підписання.\n\n"
+        f"Будь ласка, перегляньте його в кабінеті проекту, щоб ми рухалися далі за графіком."
+    )
+
+    web_app_url = settings.WEBAPP_URL.rstrip("/") + "/app"
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🚀 Відкрити кабінет проекту",
+                    web_app=WebAppInfo(url=web_app_url),
+                )
+            ]
+        ]
+    )
+
+    try:
+        await bot.send_message(
+            chat_id=client_telegram_id,
+            text=text,
+            reply_markup=keyboard,
+            parse_mode="HTML",
+        )
+        logger.info("Milestone reminder sent to client %d for '%s'", client_telegram_id, milestone_title)
+        return True
+    except Exception as exc:
+        logger.warning("Failed to send milestone reminder to client %d: %s", client_telegram_id, exc)
         return False

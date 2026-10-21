@@ -31,6 +31,7 @@ class MilestoneApproveIn(BaseModel):
         ...,
         description="Canvas signature base64 data URL or hash string",
         min_length=10,
+        max_length=200_000,
     )
     device_info: dict[str, Any] | None = Field(
         default=None,
