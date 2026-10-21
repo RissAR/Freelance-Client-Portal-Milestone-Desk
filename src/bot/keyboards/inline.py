@@ -14,7 +14,7 @@ def get_client_project_inline_keyboard(project: Project) -> InlineKeyboardMarkup
     keyboard_rows: list[list[InlineKeyboardButton]] = [
         [
             InlineKeyboardButton(
-                text="🚀 Відкрити кабінет проекту",
+                text="Відкрити кабінет проекту",
                 web_app=WebAppInfo(url=web_app_url),
             )
         ]
@@ -25,14 +25,14 @@ def get_client_project_inline_keyboard(project: Project) -> InlineKeyboardMarkup
     if project.staging_url:
         quick_links.append(
             InlineKeyboardButton(
-                text="🌐 Тестовий стенд",
+                text="Тестовий стенд",
                 url=project.staging_url,
             )
         )
     if project.figma_url:
         quick_links.append(
             InlineKeyboardButton(
-                text="🎨 Figma",
+                text="Figma",
                 url=project.figma_url,
             )
         )
@@ -43,11 +43,11 @@ def get_client_project_inline_keyboard(project: Project) -> InlineKeyboardMarkup
     keyboard_rows.append(
         [
             InlineKeyboardButton(
-                text="📊 Детальний статус",
+                text="Детальний статус",
                 callback_data="client_detailed_status",
             ),
             InlineKeyboardButton(
-                text="💬 Написати розробнику",
+                text="Написати розробнику",
                 url=admin_contact_url,
             ),
         ]
@@ -65,23 +65,23 @@ def get_guest_inline_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔍 Відкрити Демо-кабінет",
+                    text="Відкрити демо-кабінет",
                     web_app=WebAppInfo(url=demo_url),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="💬 Обговорити проект / Замовити",
+                    text="Обговорити проект / Замовити",
                     url=admin_contact_url,
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="ℹ️ Як це працює",
+                    text="Як це працює",
                     callback_data="guest_faq_how_it_works",
                 ),
                 InlineKeyboardButton(
-                    text="⭐ Чому не Trello/Jira?",
+                    text="Чому не Trello/Jira?",
                     callback_data="guest_faq_advantages",
                 ),
             ],
@@ -97,29 +97,29 @@ def get_admin_dashboard_inline_keyboard(m_count: int = 0, t_count: int = 0) -> I
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="👨‍💻 Відкрити адмін-кабінет",
+                    text="Відкрити адмін-кабінет",
                     web_app=WebAppInfo(url=web_app_url),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"⏳ На підтвердженні ({m_count})",
+                    text=f"Очікують підтвердження ({m_count})",
                     callback_data="admin_waiting_milestones",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=f"🐛 Відкриті тікети ({t_count})",
+                    text=f"Відкриті тікети ({t_count})",
                     callback_data="admin_open_tickets",
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text="📁 Список проектів",
+                    text="Список проектів",
                     callback_data="admin_all_projects",
                 ),
                 InlineKeyboardButton(
-                    text="🔄 Оновити дані",
+                    text="Оновити",
                     callback_data="admin_refresh_dashboard",
                 ),
             ],
@@ -133,7 +133,7 @@ def get_remind_client_inline_keyboard(milestone_id: int) -> InlineKeyboardMarkup
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔔 Нагадати клієнту",
+                    text="Нагадати клієнту",
                     callback_data=f"admin_remind_client:{milestone_id}",
                 )
             ]
@@ -147,7 +147,7 @@ def get_admin_back_inline_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🔙 Повернутися до пульта",
+                    text="Назад до панелі",
                     callback_data="admin_refresh_dashboard",
                 )
             ]

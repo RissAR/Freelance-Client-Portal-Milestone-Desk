@@ -7,7 +7,7 @@ import {
   Edit3,
   HelpCircle,
   ExternalLink,
-  CheckCircle2,
+  Check,
   Clock,
   AlertCircle,
   X,
@@ -66,24 +66,24 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
     switch (type) {
       case 'BUG':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200 dark:border-rose-900">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900">
             <Bug className="w-3 h-3" />
-            Баг
+            <span>Баг</span>
           </span>
         );
       case 'QUESTION':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200 dark:border-sky-900">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-900">
             <HelpCircle className="w-3 h-3" />
-            Запитання
+            <span>Запитання</span>
           </span>
         );
       case 'REVISION':
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200 dark:border-amber-900">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900">
             <Edit3 className="w-3 h-3" />
-            Правка
+            <span>Правка</span>
           </span>
         );
     }
@@ -94,15 +94,15 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
       case 'RESOLVED':
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
-            <CheckCircle2 className="w-3 h-3" />
-            Вирішено
+            <Check className="w-3 h-3" />
+            <span>Вирішено</span>
           </span>
         );
       case 'IN_REVIEW':
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-400">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
             <Clock className="w-3 h-3" />
-            В обробці
+            <span>В роботі</span>
           </span>
         );
       case 'OPEN':
@@ -110,13 +110,12 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
         return (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
             <AlertCircle className="w-3 h-3" />
-            Відкрито
+            <span>Відкрито</span>
           </span>
         );
     }
   };
 
-  // Helper map for milestone titles
   const milestoneMap = React.useMemo(() => {
     const map = {};
     milestones.forEach((m) => {
@@ -130,10 +129,10 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
       {/* Header and Add button */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
             Правки та запитання
           </h3>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-semibold">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">
             {tickets.length}
           </span>
         </div>
@@ -141,20 +140,20 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
         <button
           type="button"
           onClick={handleOpenModal}
-          className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold border border-indigo-200/60 dark:border-indigo-800/60 transition-colors"
+          className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors"
         >
           <Plus className="w-3.5 h-3.5" />
-          <span>Створити тікет</span>
+          <span>Додати запит</span>
         </button>
       </div>
 
       {/* Tickets List */}
       {tickets.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center border border-zinc-200/80 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 text-xs">
-          <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-40 text-zinc-400" />
-          <p className="font-medium">Немає активних правок чи запитань</p>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center border border-zinc-200/60 dark:border-zinc-800 text-zinc-400 text-xs">
+          <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-40 text-zinc-400" />
+          <p className="font-medium text-zinc-600 dark:text-zinc-400">Немає активних правок чи запитань</p>
           <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-1">
-            Натисніть кнопку вище, щоб додати зауваження до етапу робіт.
+            Натисніть «Додати запит», щоб зафіксувати питання до розробника.
           </p>
         </div>
       ) : (
@@ -162,7 +161,7 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
           {tickets.map((t) => (
             <div
               key={t.id}
-              className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-2.5"
+              className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/60 dark:border-zinc-800 shadow-sm space-y-2"
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 flex-wrap">
@@ -175,8 +174,8 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
               </div>
 
               {t.milestone_id && milestoneMap[t.milestone_id] && (
-                <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400 truncate">
-                  📌 {milestoneMap[t.milestone_id]}
+                <p className="text-[11px] font-medium text-zinc-400 truncate">
+                  {milestoneMap[t.milestone_id]}
                 </p>
               )}
 
@@ -189,10 +188,10 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
                   <button
                     type="button"
                     onClick={() => openLink(t.attachment_url)}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline min-h-[36px]"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white min-h-[36px]"
                   >
-                    <span>📎 Вкладення / Посилання</span>
-                    <ExternalLink className="w-3 h-3" />
+                    <span>Переглянути вкладення</span>
+                    <ExternalLink className="w-3 h-3 opacity-60" />
                   </button>
                 </div>
               )}
@@ -203,24 +202,19 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
 
       {/* Create Ticket Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
           <div
-            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md bg-white dark:bg-zinc-900 rounded-t-3xl sm:rounded-3xl shadow-xl border border-zinc-200/80 dark:border-zinc-800 p-5 space-y-4 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                  <Plus className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-zinc-900 dark:text-white leading-tight">
-                    Новий тікет / правка
-                  </h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                    Зворотний зв'язок розробнику
-                  </p>
-                </div>
+              <div>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white leading-tight">
+                  Новий запит
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Зворотний зв'язок для розробника
+                </p>
               </div>
               <button
                 type="button"
@@ -235,7 +229,7 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
             <form onSubmit={handleSubmit} className="space-y-3.5">
               {/* Type selection */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Тип запиту:
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -247,7 +241,7 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
                     }}
                     className={`min-h-[44px] flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       ticketType === 'REVISION'
-                        ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700 shadow-sm'
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
@@ -262,7 +256,7 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
                     }}
                     className={`min-h-[44px] flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       ticketType === 'BUG'
-                        ? 'bg-rose-50 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700 shadow-sm'
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
@@ -277,7 +271,7 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
                     }}
                     className={`min-h-[44px] flex items-center justify-center gap-1.5 px-2 py-2 rounded-xl text-xs font-semibold border transition-all ${
                       ticketType === 'QUESTION'
-                        ? 'bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-300 dark:border-sky-700 shadow-sm'
+                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100 shadow-sm'
                         : 'border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400'
                     }`}
                   >
@@ -289,13 +283,13 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
 
               {/* Milestone link */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
                   Прив'язка до етапу:
                 </label>
                 <select
                   value={selectedMilestoneId}
                   onChange={(e) => setSelectedMilestoneId(e.target.value)}
-                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"
                 >
                   <option value="">Загальне / Без прив'язки</option>
                   {milestones.map((m) => (
@@ -308,29 +302,29 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
 
               {/* Message */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Опис зауваження або запитання <span className="text-rose-500">*</span>
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Опис зауваження або запитання
                 </label>
                 <textarea
                   rows={4}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Опишіть, що саме потрібно виправити або уточнити..."
-                  className="w-full p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="Опишіть, що саме потрібно уточнити або виправити..."
+                  className="w-full p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
                 />
               </div>
 
               {/* Attachment URL */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  Посилання на скріншот / Loom (необов'язково):
+                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  Посилання на файл чи скріншот (необов'язково):
                 </label>
                 <input
                   type="url"
                   value={attachmentUrl}
                   onChange={(e) => setAttachmentUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full min-h-[44px] px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
                 />
               </div>
 
@@ -341,19 +335,19 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
               )}
 
               {/* Submit Buttons */}
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   onClick={handleCloseModal}
                   disabled={isCreating}
-                  className="flex-1 min-h-[46px] px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
                 >
                   Скасувати
                 </button>
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex-1 min-h-[46px] px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/25 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="flex-1 min-h-[44px] px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-semibold shadow-sm disabled:opacity-40 flex items-center justify-center gap-1.5"
                 >
                   {isCreating ? (
                     <>

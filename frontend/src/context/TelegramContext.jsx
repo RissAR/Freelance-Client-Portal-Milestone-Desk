@@ -1,21 +1,34 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const TelegramContext = createContext(null);
+const ADMIN_ID = 8607080614;
 
 export function TelegramProvider({ children }) {
   const [tg, setTg] = useState(null);
   const [user, setUser] = useState(null);
   const [initData, setInitData] = useState('');
-  const [activeRole, setActiveRole] = useState('client'); // 'client' | 'admin'
+  const [isAdmin, setIsAdmin] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('admin') === 'true';
+    }
+    return false;
+  });
+  const [activeRole, setActiveRole] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('admin') === 'true' ? 'admin' : 'client';
+    }
+    return 'client';
+  });
   const [colorScheme, setColorScheme] = useState('light');
   const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     const webApp = window.Telegram?.WebApp;
-    // Check url query params for demo flag
     const urlParams = new URLSearchParams(window.location.search);
-    const demoParam = urlParams.get('demo');
-    if (demoParam === 'true') {
+
+    if (urlParams.get('demo') === 'true') {
       setIsDemo(true);
     }
 
@@ -40,9 +53,14 @@ export function TelegramProvider({ children }) {
         setInitData(webApp.initData);
       }
 
-      if (webApp.initDataUnsafe?.user) {
-        setUser(webApp.initDataUnsafe.user);
+      const tgUser = webApp.initDataUnsafe?.user;
+      if (tgUser) {
+        setUser(tgUser);
       }
+
+      const adminDetected = (tgUser && tgUser.id === ADMIN_ID) || urlParams.get('admin') === 'true';
+      setIsAdmin(adminDetected);
+      setActiveRole(adminDetected ? 'admin' : 'client');
 
       // Listen for theme changes
       const handleThemeChange = () => {
@@ -66,9 +84,8 @@ export function TelegramProvider({ children }) {
     if (initData) {
       return initData;
     }
-    // Dev fallback if opened outside Telegram or testing
-    return activeRole === 'admin' ? 'mock_admin' : 'mock_client';
-  }, [initData, activeRole]);
+    return isAdmin ? 'mock_admin' : 'mock_client';
+  }, [initData, isAdmin]);
 
   // Haptic Feedback helper
   const haptic = useCallback(
@@ -106,8 +123,8 @@ export function TelegramProvider({ children }) {
     user,
     initData: getEffectiveInitData(),
     rawInitData: initData,
+    isAdmin,
     activeRole,
-    setActiveRole,
     colorScheme,
     isDemo,
     haptic,

@@ -11,8 +11,8 @@ def get_persistent_reply_keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
         keyboard=[
             [
-                KeyboardButton(text="🚀 Відкрити кабінет", web_app=WebAppInfo(url=web_app_url)),
-                KeyboardButton(text="📱 Головне меню"),
+                KeyboardButton(text="Відкрити кабінет", web_app=WebAppInfo(url=web_app_url)),
+                KeyboardButton(text="Головне меню"),
             ]
         ],
         resize_keyboard=True,

@@ -56,8 +56,8 @@ def format_dashboard_text(p_count: int, m_count: int, t_count: int) -> str:
     """Formats dashboard message."""
     admin_name = html.escape(settings.ADMIN_USERNAME or "Admin")
     return (
-        f"👨‍💻 <b>Панель керування проектами, @{admin_name}!</b>\n\n"
-        f"📊 <b>Зведена статистика:</b>\n"
+        f"<b>Панель керування проектами, @{admin_name}!</b>\n\n"
+        f"<b>Зведена статистика:</b>\n"
         f"• Активні проекти: <b>{p_count}</b>\n"
         f"• Етапи на підтвердженні: <b>{m_count}</b>\n"
         f"• Відкриті тікети/правки: <b>{t_count}</b>\n\n"
@@ -75,7 +75,7 @@ async def admin_dashboard_handler(message: types.Message) -> None:
     # Ensure persistent reply keyboard is active
     if message.text and (message.text.startswith("/start") or message.text.startswith("/admin")):
         await message.answer(
-            "👨‍💻 <b>Client Portal Admin</b> активовано.",
+            "<b>Client Portal Admin</b> активовано.",
             reply_markup=get_persistent_reply_keyboard(),
             parse_mode="HTML",
         )
@@ -121,14 +121,14 @@ async def callback_admin_waiting_milestones(call: types.CallbackQuery) -> None:
         milestones = (await session.execute(stmt)).scalars().all()
 
     if not milestones:
-        text = "✅ <b>Наразі немає етапів, що очікують підтвердження.</b>"
+        text = "<b>Наразі немає етапів, що очікують підтвердження.</b>"
         if call.message and isinstance(call.message, types.Message):
             await call.message.answer(text, reply_markup=get_admin_back_inline_keyboard(), parse_mode="HTML")
         return
 
     if call.message and isinstance(call.message, types.Message):
         await call.message.answer(
-            f"⏳ <b>Етапи, що очікують підтвердження ({len(milestones)}):</b>",
+            f"<b>Етапи, що очікують підтвердження ({len(milestones)}):</b>",
             parse_mode="HTML",
         )
         for m in milestones:
@@ -136,10 +136,10 @@ async def callback_admin_waiting_milestones(call: types.CallbackQuery) -> None:
             m_title = html.escape(m.title)
             c_name = html.escape(m.project.client.full_name)
             card = (
-                f"📌 <b>{m_title}</b> (#{m.order_index})\n"
-                f"📁 Проект: <b>{p_title}</b>\n"
-                f"💰 Сума: <b>{m.amount:,.2f} {m.project.currency}</b>\n"
-                f"👤 Клієнт: <b>{c_name}</b>"
+                f"<b>{m_title}</b> (#{m.order_index})\n"
+                f"Проект: <b>{p_title}</b>\n"
+                f"Сума: <b>{m.amount:,.2f} {m.project.currency}</b>\n"
+                f"Клієнт: <b>{c_name}</b>"
             )
             await call.message.answer(
                 card,
@@ -182,7 +182,7 @@ async def callback_admin_remind_client(call: types.CallbackQuery) -> None:
         if call.message and isinstance(call.message, types.Message):
             try:
                 await call.message.edit_text(
-                    f"{call.message.html_text}\n\n🔔 <i>Нагадування надіслано клієнту!</i>",
+                    f"{call.message.html_text}\n\n<i>Нагадування надіслано клієнту!</i>",
                     reply_markup=None,
                     parse_mode="HTML",
                 )
@@ -207,14 +207,14 @@ async def callback_admin_open_tickets(call: types.CallbackQuery) -> None:
         tickets = (await session.execute(stmt)).scalars().all()
 
     if not tickets:
-        text = "✅ <b>Усі тікети вирішено! Відкритих правок немає.</b>"
+        text = "<b>Усі тікети вирішено! Відкритих правок немає.</b>"
         if call.message and isinstance(call.message, types.Message):
             await call.message.answer(text, reply_markup=get_admin_back_inline_keyboard(), parse_mode="HTML")
         return
 
     if call.message and isinstance(call.message, types.Message):
         await call.message.answer(
-            f"🐛 <b>Відкриті тікети та правки ({len(tickets)}):</b>",
+            f"<b>Відкриті тікети та правки ({len(tickets)}):</b>",
             parse_mode="HTML",
         )
         for t in tickets:
@@ -222,16 +222,16 @@ async def callback_admin_open_tickets(call: types.CallbackQuery) -> None:
             c_name = html.escape(t.project.client.full_name)
             msg_text = html.escape(t.message)
             card = (
-                f"🏷 <b>Тікет #{t.id} ({t.type.value})</b>\n"
-                f"📁 Проект: <b>{p_title}</b>\n"
-                f"👤 Клієнт: <b>{c_name}</b>\n"
-                f"📝 Текст: <i>{msg_text}</i>"
+                f"<b>Тікет #{t.id} ({t.type.value})</b>\n"
+                f"Проект: <b>{p_title}</b>\n"
+                f"Клієнт: <b>{c_name}</b>\n"
+                f"Текст: <i>{msg_text}</i>"
             )
             keyboard = types.InlineKeyboardMarkup(
                 inline_keyboard=[
                     [
                         types.InlineKeyboardButton(
-                            text="✅ Позначити як вирішено",
+                            text="Позначити як вирішено",
                             callback_data=f"admin_resolve_ticket:{t.id}",
                         )
                     ]
@@ -257,12 +257,12 @@ async def callback_admin_all_projects(call: types.CallbackQuery) -> None:
         projects = (await session.execute(stmt)).scalars().all()
 
     if not projects:
-        text = "📁 Проектів поки не створено."
+        text = "Проектів поки не створено."
         if call.message and isinstance(call.message, types.Message):
             await call.message.answer(text, reply_markup=get_admin_back_inline_keyboard(), parse_mode="HTML")
         return
 
-    lines = ["📁 <b>Список проектів:</b>\n"]
+    lines = ["<b>Список проектів:</b>\n"]
     for p in projects:
         total_m = len(p.milestones)
         approved_m = sum(1 for m in p.milestones if m.status == MilestoneStatus.APPROVED)
@@ -316,7 +316,7 @@ async def callback_admin_start_milestone(call: types.CallbackQuery) -> None:
     if call.message and isinstance(call.message, types.Message):
         updated_text = (
             f"{call.message.html_text}\n\n"
-            f"🚀 <b>Роботу над етапом розпочато!</b> (Статус: В роботі)"
+            f"<b>Роботу над етапом розпочато!</b> (Статус: В роботі)"
         )
         try:
             await call.message.edit_text(updated_text, reply_markup=None, parse_mode="HTML")
@@ -329,7 +329,7 @@ async def callback_admin_start_milestone(call: types.CallbackQuery) -> None:
         await notify_client(
             bot=call.bot,
             client_telegram_id=client_tg_id,
-            text=f"🚀 <b>Розробник розпочав роботу над етапом «{escaped_title}»!</b>",
+            text=f"<b>Розробник розпочав роботу над етапом «{escaped_title}»!</b>",
         )
 
 
@@ -366,7 +366,7 @@ async def callback_admin_resolve_ticket(call: types.CallbackQuery) -> None:
     if call.message and isinstance(call.message, types.Message):
         updated_text = (
             f"{call.message.html_text}\n\n"
-            f"✅ <b>Вирішено розробником.</b>"
+            f"<b>Вирішено розробником.</b>"
         )
         try:
             await call.message.edit_text(updated_text, reply_markup=None, parse_mode="HTML")
@@ -380,7 +380,7 @@ async def callback_admin_resolve_ticket(call: types.CallbackQuery) -> None:
             bot=call.bot,
             client_telegram_id=client_tg_id,
             text=(
-                f"✅ <b>Ваш тікет #{ticket_id} вирішено розробником!</b>\n\n"
+                f"<b>Ваш тікет #{ticket_id} вирішено розробником!</b>\n\n"
                 f"<i>«{escaped_msg}»</i>"
             ),
         )

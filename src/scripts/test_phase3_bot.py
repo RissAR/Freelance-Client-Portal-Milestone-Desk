@@ -103,9 +103,9 @@ async def run_tests() -> None:
     assert reply_kb.is_persistent is True
     assert reply_kb.resize_keyboard is True
     assert len(reply_kb.keyboard[0]) == 2
-    assert reply_kb.keyboard[0][0].text == "🚀 Відкрити кабінет"
+    assert reply_kb.keyboard[0][0].text == "Відкрити кабінет"
     assert reply_kb.keyboard[0][0].web_app is not None
-    assert reply_kb.keyboard[0][1].text == "📱 Головне меню"
+    assert reply_kb.keyboard[0][1].text == "Головне меню"
     logger.info("PASSED: Persistent reply keyboard created with expected buttons.")
 
     # -----------------------------------------------------------------
@@ -123,11 +123,11 @@ async def run_tests() -> None:
         all_buttons = [btn for row in client_kb.inline_keyboard for btn in row]
         button_texts = [b.text for b in all_buttons]
 
-        assert "🚀 Відкрити кабінет проекту" in button_texts
-        assert "🌐 Тестовий стенд" in button_texts
-        assert "🎨 Figma" in button_texts
-        assert "📊 Детальний статус" in button_texts
-        assert "💬 Написати розробнику" in button_texts
+        assert "Відкрити кабінет проекту" in button_texts
+        assert "Тестовий стенд" in button_texts
+        assert "Figma" in button_texts
+        assert "Детальний статус" in button_texts
+        assert "Написати розробнику" in button_texts
     logger.info("PASSED: Client inline keyboard contains Staging, Figma, and Contact buttons.")
 
     # -----------------------------------------------------------------
@@ -136,16 +136,16 @@ async def run_tests() -> None:
     logger.info("[Test 3] Testing guest menu and FAQ...")
     guest_kb = get_guest_inline_keyboard()
     guest_buttons = [btn.text for row in guest_kb.inline_keyboard for btn in row]
-    assert "🔍 Відкрити Демо-кабінет" in guest_buttons
-    assert "💬 Обговорити проект / Замовити" in guest_buttons
-    assert "ℹ️ Як це працює" in guest_buttons
-    assert "⭐ Чому не Trello/Jira?" in guest_buttons
+    assert "Відкрити демо-кабінет" in guest_buttons
+    assert "Обговорити проект / Замовити" in guest_buttons
+    assert "Як це працює" in guest_buttons
+    assert "Чому не Trello/Jira?" in guest_buttons
 
     # Test unknown user receives guest screen
     msg_unknown = create_mock_message(UNKNOWN_CLIENT_ID, first_name="Stranger")
     await client_start_handler(msg_unknown)
     msg_unknown.answer.assert_called()
-    assert any("Демо-кабінет" in str(call_arg) for call_arg in msg_unknown.answer.call_args_list)
+    assert any("демо-кабінет" in str(call_arg).lower() for call_arg in msg_unknown.answer.call_args_list)
 
     # Test FAQ callbacks
     mock_bot = MagicMock()

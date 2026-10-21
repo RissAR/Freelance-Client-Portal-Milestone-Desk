@@ -35,16 +35,16 @@ router.callback_query.filter(is_client_filter)
 
 
 def format_milestone_status(status: MilestoneStatus) -> str:
-    """Returns friendly emoji label for milestone status."""
+    """Returns friendly label for milestone status."""
     match status:
         case MilestoneStatus.APPROVED:
-            return "✅ Затверджено"
+            return "Затверджено"
         case MilestoneStatus.WAITING_APPROVAL:
-            return "⏳ Очікує підтвердження"
+            return "Очікує підтвердження"
         case MilestoneStatus.IN_PROGRESS:
-            return "🛠 В роботі"
+            return "В роботі"
         case MilestoneStatus.LOCKED:
-            return "🔒 Заблоковано"
+            return "Черга"
         case _:
             return str(status.value)
 
@@ -71,7 +71,7 @@ async def client_start_handler(message: types.Message) -> None:
     # Ensure persistent reply keyboard is active
     if message.text and message.text.startswith("/start"):
         await message.answer(
-            "🔹 <b>Client Portal &amp; Milestone Desk</b> активовано.",
+            "<b>Client Portal &amp; Milestone Desk</b> активовано.",
             reply_markup=get_persistent_reply_keyboard(),
             parse_mode="HTML",
         )
@@ -92,11 +92,11 @@ async def client_start_handler(message: types.Message) -> None:
 
         escaped_title = html.escape(project.title)
         card_text = (
-            f"👋 Вітаємо, <b>{first_name}</b>!\n\n"
-            f"📁 Проект: <b>{escaped_title}</b>\n"
-            f"💰 Бюджет: <b>{project.budget:,.2f} {project.currency}</b>\n"
-            f"📊 Прогрес: <b>{progress}%</b>\n"
-            f"📌 Поточний етап: <b>{current_title}</b> ({current_status})\n\n"
+            f"Вітаємо, <b>{first_name}</b>!\n\n"
+            f"Проект: <b>{escaped_title}</b>\n"
+            f"Бюджет: <b>{project.budget:,.2f} {project.currency}</b>\n"
+            f"Прогрес: <b>{progress}%</b>\n"
+            f"Поточний етап: <b>{current_title}</b> ({current_status})\n\n"
             f"<i>Скористайтеся кнопками нижче для переходу до кабінету, тестового стенду чи зв'язку з розробником:</i>"
         )
 
@@ -110,14 +110,14 @@ async def client_start_handler(message: types.Message) -> None:
     # 2. Flow for new guests / portfolio visitors
     admin_tag = f"@{settings.ADMIN_USERNAME}" if settings.ADMIN_USERNAME else "розробника"
     guest_text = (
-        f"👋 Вітаємо, <b>{first_name}</b>!\n\n"
+        f"Вітаємо, <b>{first_name}</b>!\n\n"
         f"Це персональний <b>Client Portal &amp; Milestone Desk</b> — простір прозорого ведення "
         f"діджитал-проектів.\n\n"
-        f"💡 <b>Як я працюю з клієнтами:</b>\n"
+        f"<b>Як я працюю з клієнтами:</b>\n"
         f"• <b>Поетапна оплата й прийомка:</b> кожен спринт затверджується цифровим підписом на Canvas.\n"
         f"• <b>Жодна правка не губиться:</b> структуровані тікети замість безладу в повідомленнях.\n"
         f"• <b>Миттєвий доступ:</b> робочий кабінет прямо в Telegram Mini App без зайвих паролів.\n\n"
-        f"<i>Спробуйте інтерактивний Демо-кабінет або зв'яжіться зі мною ({admin_tag}) для оцінки вашого проекту:</i>"
+        f"<i>Спробуйте інтерактивний демо-кабінет або зв'яжіться зі мною ({admin_tag}) для оцінки вашого проекту:</i>"
     )
 
     await message.answer(
@@ -153,7 +153,7 @@ async def client_status_handler(message: types.Message) -> None:
 
     milestones = sorted(project.milestones, key=lambda m: m.order_index)
     escaped_title = html.escape(project.title)
-    lines = [f"📊 <b>Таймлайн проекту: {escaped_title}</b>\n"]
+    lines = [f"<b>Таймлайн проекту: {escaped_title}</b>\n"]
 
     for m in milestones:
         status_label = format_milestone_status(m.status)
@@ -181,7 +181,7 @@ async def callback_guest_faq_how_it_works(call: types.CallbackQuery) -> None:
     """Provides detailed FAQ on how projects are managed via Client Portal."""
     await call.answer()
     text = (
-        "ℹ️ <b>Як працює Client Portal:</b>\n\n"
+        "<b>Як працює Client Portal:</b>\n\n"
         "1. <b>Декомпозиція на етапи:</b> Проект розбивається на чіткі майлстоуни (дизайн, верстка, бекенд, інтеграції).\n"
         "2. <b>Тестовий стенд:</b> Ви бачите живий результат на стейджингу перед кожним затвердженням.\n"
         "3. <b>Цифровий підпис:</b> Прийомка фіксується вашим підписом на Canvas у Mini App, формуючи офіційний акт робіт.\n"
@@ -196,7 +196,7 @@ async def callback_guest_faq_advantages(call: types.CallbackQuery) -> None:
     """Explains advantages of Client Portal over Jira/Trello/Chats."""
     await call.answer()
     text = (
-        "⭐ <b>Чому цей підхід кращий за Trello, Jira чи звичайний чат?</b>\n\n"
+        "<b>Чому цей підхід кращий за Trello, Jira чи звичайний чат?</b>\n\n"
         "• <b>Все в одному вікні Telegram:</b> Жодних реєстрацій у сторонніх сервісах чи забутих паролів.\n"
         "• <b>Без «загублених» повідомлень:</b> Правки не тонуть у стрічці переписки — кожне завдання має свій статус.\n"
         "• <b>Прозорість бюджету:</b> Чіткий облік виконаних робіт та наступних оплат у реальному часі.\n"
@@ -211,14 +211,15 @@ async def client_help_handler(message: types.Message) -> None:
     """Shows help instructions for clients."""
     admin_contact = f"@{settings.ADMIN_USERNAME}" if settings.ADMIN_USERNAME else "розробника"
     help_text = (
-        "ℹ️ <b>Як користуватися Client Portal:</b>\n\n"
-        "1. <b>🚀 Відкрити кабінет проекту:</b>\n"
+        "<b>Як користуватися Client Portal:</b>\n\n"
+        "1. <b>Відкрити кабінет проекту:</b>\n"
         "   Запускає Telegram Mini App з інтерактивним таймлайном робіт.\n\n"
-        "2. <b>✍️ Затвердження етапів:</b>\n"
+        "2. <b>Затвердження етапів:</b>\n"
         "   Коли етап переходить у статус <i>«Очікує підтвердження»</i>, відкрийте його в кабінеті "
         "і поставте цифровий підпис у полі Canvas. Після цього автоматично формується акт.\n\n"
-        "3. <b>💬 Правки та питання:</b>\n"
+        "3. <b>Правки та питання:</b>\n"
         "   У кабінеті натисніть кнопку <i>«Додати тікет»</i>, щоб зафіксувати побажання або баги.\n\n"
         f"Зв'язок з розробником: {admin_contact}"
     )
     await message.answer(help_text, parse_mode="HTML")
+

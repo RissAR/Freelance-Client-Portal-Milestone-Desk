@@ -33,12 +33,12 @@ async def notify_admin_milestone_approved(
     escaped_currency = html.escape(currency)
 
     text = (
-        f"🎉 <b>Етап проекту затверджено клієнтом!</b>\n\n"
-        f"📁 Проект: <b>{escaped_project}</b>\n"
-        f"📌 Етап: <b>{escaped_milestone}</b> (id: #{milestone_id})\n"
-        f"💰 Сума: <b>{amount:,.2f} {escaped_currency}</b>\n"
-        f"👤 Клієнт: <b>{escaped_client}</b>\n"
-        f"✍️ <i>Цифровий підпис збережено в системі.</i>\n"
+        f"<b>Етап проекту затверджено клієнтом!</b>\n\n"
+        f"Проект: <b>{escaped_project}</b>\n"
+        f"Етап: <b>{escaped_milestone}</b> (id: #{milestone_id})\n"
+        f"Сума: <b>{amount:,.2f} {escaped_currency}</b>\n"
+        f"Клієнт: <b>{escaped_client}</b>\n"
+        f"<i>Цифровий підпис збережено в системі.</i>\n"
     )
 
     keyboard = None
@@ -48,7 +48,7 @@ async def notify_admin_milestone_approved(
             inline_keyboard=[
                 [
                     InlineKeyboardButton(
-                        text="🚀 Почати наступний етап",
+                        text="Почати наступний етап",
                         callback_data=f"admin_start_milestone:{target_milestone_id}",
                     )
                 ]
@@ -85,28 +85,27 @@ async def notify_admin_ticket_created(
         )
         return False
 
-    type_icon = "🐛" if ticket_type == "BUG" else "✏️" if ticket_type == "REVISION" else "❓"
     escaped_project = html.escape(project_title)
     escaped_client = html.escape(client_name)
     escaped_type = html.escape(ticket_type)
     escaped_msg = html.escape(message_text)
 
     text = (
-        f"{type_icon} <b>Новий тікет від клієнта #{ticket_id}</b>\n\n"
-        f"📁 Проект: <b>{escaped_project}</b>\n"
-        f"👤 Клієнт: <b>{escaped_client}</b>\n"
-        f"🏷 Тип: <b>{escaped_type}</b>\n"
-        f"📝 Повідомлення:\n<i>{escaped_msg}</i>\n"
+        f"<b>Новий тікет від клієнта #{ticket_id}</b>\n\n"
+        f"Проект: <b>{escaped_project}</b>\n"
+        f"Клієнт: <b>{escaped_client}</b>\n"
+        f"Тип: <b>{escaped_type}</b>\n"
+        f"Повідомлення:\n<i>{escaped_msg}</i>\n"
     )
     if attachment_url:
         escaped_url = html.escape(attachment_url, quote=True)
-        text += f"\n📎 Вкладення: <a href='{escaped_url}'>Переглянути файл</a>\n"
+        text += f"\nВкладення: <a href='{escaped_url}'>Переглянути файл</a>\n"
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="✅ Позначити як вирішено",
+                    text="Позначити як вирішено",
                     callback_data=f"admin_resolve_ticket:{ticket_id}",
                 )
             ]
@@ -165,7 +164,7 @@ async def notify_client_milestone_reminder(
 
     escaped_title = html.escape(milestone_title)
     text = (
-        f"⏳ <b>Привіт!</b>\n\n"
+        f"<b>Привіт!</b>\n\n"
         f"Етап <b>«{escaped_title}»</b> готовий до перегляду та підписання.\n\n"
         f"Будь ласка, перегляньте його в кабінеті проекту, щоб ми рухалися далі за графіком."
     )
@@ -175,7 +174,7 @@ async def notify_client_milestone_reminder(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text="🚀 Відкрити кабінет проекту",
+                    text="Відкрити кабінет проекту",
                     web_app=WebAppInfo(url=web_app_url),
                 )
             ]
