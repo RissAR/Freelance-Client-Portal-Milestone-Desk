@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-height: 100%;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  -webkit-tap-highlight-color: transparent;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* Prevent unwanted pull-to-refresh or bounce in Telegram WebApp */
+body {
+  overscroll-behavior-y: none;
+}
+
+/* Canvas styling for touch drawing */
+canvas {
+  touch-action: none;
+}

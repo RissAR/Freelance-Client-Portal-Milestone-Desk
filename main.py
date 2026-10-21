@@ -5,10 +5,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+import os
 import uvicorn
 from aiogram.exceptions import TelegramUnauthorizedError
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.api.routes.admin_routes import router as admin_router
 from src.api.routes.app_routes import router as app_router
@@ -57,6 +59,11 @@ app.add_middleware(
 app.include_router(app_router)
 app.include_router(client_router)
 app.include_router(admin_router)
+
+# Mount frontend static assets if built
+if os.path.exists("frontend/dist/assets"):
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+    app.mount("/app/assets", StaticFiles(directory="frontend/dist/assets"), name="app_assets")
 
 
 async def run_bot() -> None:

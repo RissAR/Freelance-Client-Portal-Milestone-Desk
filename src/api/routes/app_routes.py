@@ -1,4 +1,4 @@
-"""Application routes with strict anti-cache headers for Telegram Mini App."""
+import os
 
 from fastapi import APIRouter, Response
 from fastapi.responses import HTMLResponse
@@ -20,11 +20,19 @@ def apply_anti_cache_headers(response: Response) -> None:
         response.headers[header] = value
 
 
+INDEX_HTML_PATH = os.path.join("frontend", "dist", "index.html")
+
+
 @router.get("/", response_class=HTMLResponse)
 @router.get("/app", response_class=HTMLResponse)
 async def serve_mini_app(response: Response) -> HTMLResponse:
     """Serves the Telegram Mini App shell with anti-cache headers and static versioning."""
     apply_anti_cache_headers(response)
+
+    if os.path.exists(INDEX_HTML_PATH):
+        with open(INDEX_HTML_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+        return HTMLResponse(content=content, headers=ANTI_CACHE_HEADERS)
 
     version = settings.APP_VERSION
     html_content = f"""<!DOCTYPE html>

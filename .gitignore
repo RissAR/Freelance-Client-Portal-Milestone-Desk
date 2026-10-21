@@ -46,3 +46,9 @@ data/*.db-shm
 # OS
 .DS_Store
 Thumbs.db
+
+# Frontend
+node_modules/
+.npm
+!frontend/dist/
+
