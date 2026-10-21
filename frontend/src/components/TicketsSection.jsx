@@ -24,6 +24,8 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [filter, setFilter] = useState('ALL'); // 'ALL' | 'OPEN' | 'RESOLVED'
+
   const handleOpenModal = () => {
     haptic('light');
     setIsModalOpen(true);
@@ -116,87 +118,164 @@ export default function TicketsSection({ tickets = [], milestones = [], onCreate
     }
   };
 
-  const milestoneMap = React.useMemo(() => {
+  const milestoneLookup = React.useMemo(() => {
     const map = {};
     milestones.forEach((m) => {
-      map[m.id] = `Етап #${m.order_index}: ${m.title}`;
+      map[m.id] = m;
     });
     return map;
   }, [milestones]);
 
+  const filteredTickets = React.useMemo(() => {
+    if (filter === 'OPEN') {
+      return tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_REVIEW');
+    }
+    if (filter === 'RESOLVED') {
+      return tickets.filter((t) => t.status === 'RESOLVED');
+    }
+    return tickets;
+  }, [tickets, filter]);
+
+  const openTicketsCount = React.useMemo(() => {
+    return tickets.filter((t) => t.status === 'OPEN' || t.status === 'IN_REVIEW').length;
+  }, [tickets]);
+
+  const resolvedTicketsCount = React.useMemo(() => {
+    return tickets.filter((t) => t.status === 'RESOLVED').length;
+  }, [tickets]);
+
+  const handleFilterChange = (newFilter) => {
+    if (filter !== newFilter) {
+      haptic('selection');
+      setFilter(newFilter);
+    }
+  };
+
   return (
     <div className="space-y-3">
-      {/* Header and Add button */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-            Правки та запитання
-          </h3>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 font-medium">
+      {/* Prominent Top Action Button */}
+      <button
+        type="button"
+        onClick={handleOpenModal}
+        className="w-full min-h-[44px] flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-semibold shadow-sm active:scale-[0.99] transition-all"
+      >
+        <Plus className="w-4 h-4" />
+        <span>Додати правку / повідомити про баг</span>
+      </button>
+
+      {/* Pill Filters */}
+      <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-800/60 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+        <button
+          type="button"
+          onClick={() => handleFilterChange('ALL')}
+          className={`flex-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            filter === 'ALL'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+          }`}
+        >
+          <span>Всі</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-200/60 dark:bg-zinc-700/60 text-zinc-600 dark:text-zinc-300">
             {tickets.length}
           </span>
-        </div>
+        </button>
 
         <button
           type="button"
-          onClick={handleOpenModal}
-          className="min-h-[44px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors"
+          onClick={() => handleFilterChange('OPEN')}
+          className={`flex-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            filter === 'OPEN'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+          }`}
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Додати запит</span>
+          <span>Відкриті</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-200/60 dark:bg-zinc-700/60 text-zinc-600 dark:text-zinc-300">
+            {openTicketsCount}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleFilterChange('RESOLVED')}
+          className={`flex-1 min-h-[32px] px-2.5 py-1 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${
+            filter === 'RESOLVED'
+              ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-white shadow-sm'
+              : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
+          }`}
+        >
+          <span>Вирішені</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-zinc-200/60 dark:bg-zinc-700/60 text-zinc-600 dark:text-zinc-300">
+            {resolvedTicketsCount}
+          </span>
         </button>
       </div>
 
       {/* Tickets List */}
-      {tickets.length === 0 ? (
+      {filteredTickets.length === 0 ? (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center border border-zinc-200/60 dark:border-zinc-800 text-zinc-400 text-xs">
           <MessageSquare className="w-7 h-7 mx-auto mb-2 opacity-40 text-zinc-400" />
-          <p className="font-medium text-zinc-600 dark:text-zinc-400">Немає активних правок чи запитань</p>
+          <p className="font-medium text-zinc-600 dark:text-zinc-400">
+            {filter === 'ALL'
+              ? 'Немає активних правок чи запитань'
+              : filter === 'OPEN'
+              ? 'Немає відкритих правок'
+              : 'Немає вирішених правок'}
+          </p>
           <p className="text-[11px] text-zinc-400 dark:text-zinc-600 mt-1">
-            Натисніть «Додати запит», щоб зафіксувати питання до розробника.
+            Скористайтеся кнопкою вище, щоб додати запит.
           </p>
         </div>
       ) : (
         <div className="space-y-2.5">
-          {tickets.map((t) => (
-            <div
-              key={t.id}
-              className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/60 dark:border-zinc-800 shadow-sm space-y-2"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {getTypeBadge(t.type)}
-                  {getStatusBadge(t.status)}
-                </div>
-                <span className="text-[10px] text-zinc-400">
-                  #{t.id}
-                </span>
-              </div>
+          {filteredTickets.map((t) => {
+            const linkedMilestone = t.milestone_id ? milestoneLookup[t.milestone_id] : null;
 
-              {t.milestone_id && milestoneMap[t.milestone_id] && (
-                <p className="text-[11px] font-medium text-zinc-400 truncate">
-                  {milestoneMap[t.milestone_id]}
+            return (
+              <div
+                key={t.id}
+                className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/60 dark:border-zinc-800 shadow-sm space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {getTypeBadge(t.type)}
+                    {getStatusBadge(t.status)}
+                    {linkedMilestone && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60">
+                        Етап #{linkedMilestone.order_index}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    #{t.id}
+                  </span>
+                </div>
+
+                {linkedMilestone && (
+                  <p className="text-[11px] text-zinc-400 truncate">
+                    {linkedMilestone.title}
+                  </p>
+                )}
+
+                <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">
+                  {t.message}
                 </p>
-              )}
 
-              <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">
-                {t.message}
-              </p>
-
-              {t.attachment_url && (
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={() => openLink(t.attachment_url)}
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white min-h-[36px]"
-                  >
-                    <span>Переглянути вкладення</span>
-                    <ExternalLink className="w-3 h-3 opacity-60" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                {t.attachment_url && (
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      onClick={() => openLink(t.attachment_url)}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white min-h-[36px]"
+                    >
+                      <span>Переглянути вкладення</span>
+                      <ExternalLink className="w-3 h-3 opacity-60" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
 import { useTelegram } from '../context/TelegramContext';
+import SegmentedTabs from './SegmentedTabs';
 import {
   FolderKanban,
   Check,
-  RotateCcw,
+  Clock,
+  Play,
+  FileCheck,
+  ExternalLink,
+  Calendar,
+  Lock,
+  Bug,
+  Edit3,
+  HelpCircle,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function AdminDashboard({
@@ -12,13 +22,35 @@ export default function AdminDashboard({
   onRefresh,
   onUpdateMilestoneStatus,
   onUpdateTicketStatus,
+  onViewAct,
 }) {
-  const { haptic } = useTelegram();
+  const { haptic, openLink } = useTelegram();
   const [selectedProjectId, setSelectedProjectId] = useState(null);
+  const [adminTab, setAdminTab] = useState('milestones'); // 'milestones' | 'tickets'
 
   // Default to first project if none selected
   const activeProject =
     projects.find((p) => p.id === selectedProjectId) || projects[0] || null;
+
+  const milestones = activeProject?.milestones || [];
+  const tickets = activeProject?.tickets || [];
+  const openTicketsCount = tickets.filter(
+    (t) => t.status === 'OPEN' || t.status === 'IN_REVIEW'
+  ).length;
+
+  const adminTabs = [
+    {
+      id: 'milestones',
+      label: 'Керування етапами',
+      count: milestones.length,
+    },
+    {
+      id: 'tickets',
+      label: 'Тікети та правки',
+      count: tickets.length,
+      hasBadge: openTicketsCount > 0,
+    },
+  ];
 
   const handleMilestoneStatusChange = (milestoneId, newStatus) => {
     haptic('medium');
@@ -35,8 +67,110 @@ export default function AdminDashboard({
     onUpdateTicketStatus(ticketId, 'IN_REVIEW');
   };
 
+  const formatDueDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const getTypeBadge = (type) => {
+    switch (type) {
+      case 'BUG':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900">
+            <Bug className="w-3 h-3" />
+            <span>Баг</span>
+          </span>
+        );
+      case 'QUESTION':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-sky-50 text-sky-700 dark:bg-sky-950/60 dark:text-sky-400 border border-sky-200/60 dark:border-sky-900">
+            <HelpCircle className="w-3 h-3" />
+            <span>Запитання</span>
+          </span>
+        );
+      case 'REVISION':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-900">
+            <Edit3 className="w-3 h-3" />
+            <span>Правка</span>
+          </span>
+        );
+    }
+  };
+
+  const getTicketStatusBadge = (status) => {
+    switch (status) {
+      case 'RESOLVED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">
+            <Check className="w-3 h-3" />
+            <span>Вирішено</span>
+          </span>
+        );
+      case 'IN_REVIEW':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">
+            <Clock className="w-3 h-3" />
+            <span>В роботі</span>
+          </span>
+        );
+      case 'OPEN':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            <AlertCircle className="w-3 h-3" />
+            <span>Відкрито</span>
+          </span>
+        );
+    }
+  };
+
+  const getMilestoneStatusBadge = (status) => {
+    switch (status) {
+      case 'APPROVED':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/50">
+            <Check className="w-3 h-3" />
+            <span>Затверджено</span>
+          </span>
+        );
+      case 'WAITING_APPROVAL':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/50">
+            <Clock className="w-3 h-3" />
+            <span>Очікує підпису</span>
+          </span>
+        );
+      case 'IN_PROGRESS':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/50">
+            <Play className="w-2.5 h-2.5 fill-current" />
+            <span>В роботі</span>
+          </span>
+        );
+      case 'LOCKED':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border border-zinc-200/60 dark:border-zinc-700/60">
+            <Lock className="w-2.5 h-2.5" />
+            <span>Черга</span>
+          </span>
+        );
+    }
+  };
+
+  const sortedMilestones = [...milestones].sort(
+    (a, b) => (a.order_index || 0) - (b.order_index || 0)
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Project Selector if multiple */}
       {projects.length > 1 && (
         <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200/80 dark:border-zinc-800">
@@ -66,7 +200,7 @@ export default function AdminDashboard({
           <p>Немає створених проектів у базі даних</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {/* Active Project Card */}
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 space-y-2 text-xs">
             <div className="flex justify-between items-start gap-2">
@@ -82,163 +216,220 @@ export default function AdminDashboard({
                 {activeProject.status}
               </span>
             </div>
-            <div className="flex justify-between text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-800">
-              <span>Бюджет: <strong className="text-zinc-800 dark:text-zinc-200">${activeProject.budget} {activeProject.currency}</strong></span>
-              <span>Прогрес: <strong className="text-zinc-800 dark:text-zinc-200">{activeProject.progress_percentage}%</strong></span>
+            <div className="flex justify-between text-zinc-500 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-[11px]">
+              <span>
+                Бюджет:{' '}
+                <strong className="text-zinc-800 dark:text-zinc-200">
+                  ${Number(activeProject.budget || 0).toLocaleString()} {activeProject.currency || 'USD'}
+                </strong>
+              </span>
+              <span>
+                Прогрес:{' '}
+                <strong className="text-zinc-800 dark:text-zinc-200">
+                  {activeProject.progress_percentage}%
+                </strong>
+              </span>
             </div>
           </div>
 
-          {/* Milestones Management */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              Керування етапами
-            </h4>
+          {/* Segmented Tabs for Admin */}
+          <SegmentedTabs
+            tabs={adminTabs}
+            activeTab={adminTab}
+            onChange={setAdminTab}
+          />
 
-            <div className="space-y-2">
-              {(activeProject.milestones || []).map((m) => (
-                <div
-                  key={m.id}
-                  className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[11px] font-semibold text-zinc-400">
-                        Етап #{m.order_index}
-                      </span>
-                      <h5 className="text-xs font-semibold text-zinc-900 dark:text-white break-words">
-                        {m.title}
-                      </h5>
-                    </div>
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white">
-                      ${m.amount}
-                    </span>
-                  </div>
-
-                  {/* Status buttons without emojis */}
-                  <div className="pt-1">
-                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-                      <button
-                        type="button"
-                        onClick={() => handleMilestoneStatusChange(m.id, 'LOCKED')}
-                        className={`min-h-[36px] px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${
-                          m.status === 'LOCKED'
-                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 border-zinc-900 dark:border-zinc-100'
-                            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        Черга
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleMilestoneStatusChange(m.id, 'IN_PROGRESS')}
-                        className={`min-h-[36px] px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${
-                          m.status === 'IN_PROGRESS'
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        В роботі
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleMilestoneStatusChange(m.id, 'WAITING_APPROVAL')}
-                        className={`min-h-[36px] px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${
-                          m.status === 'WAITING_APPROVAL'
-                            ? 'bg-amber-600 text-white border-amber-600'
-                            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        Очікує
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => handleMilestoneStatusChange(m.id, 'APPROVED')}
-                        className={`min-h-[36px] px-2 py-1.5 rounded-xl text-[11px] font-semibold border transition-all ${
-                          m.status === 'APPROVED'
-                            ? 'bg-emerald-600 text-white border-emerald-600'
-                            : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-                        }`}
-                      >
-                        Затверджено
-                      </button>
-                    </div>
-                  </div>
+          {/* Tab 1: Milestones Management with Linear Action Control */}
+          {adminTab === 'milestones' && (
+            <div className="space-y-2.5">
+              {sortedMilestones.length === 0 ? (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center border border-zinc-200/80 dark:border-zinc-800 text-zinc-400 text-xs">
+                  <p>Немає етапів у цьому проекті</p>
                 </div>
-              ))}
-            </div>
-          </div>
+              ) : (
+                sortedMilestones.map((m) => {
+                  const dueDateText = formatDueDate(m.due_date);
 
-          {/* Tickets Management */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-              Тікети клієнта ({activeProject.tickets?.length || 0})
-            </h4>
+                  return (
+                    <div
+                      key={m.id}
+                      className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 space-y-3 shadow-sm"
+                    >
+                      {/* Top row: Title, status, and price */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-zinc-900 dark:text-white">
+                              Етап #{m.order_index}
+                            </span>
+                            {getMilestoneStatusBadge(m.status)}
+                          </div>
+                          <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 break-words mt-1">
+                            {m.title}
+                          </h4>
+                          {m.description && (
+                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed break-words">
+                              {m.description}
+                            </p>
+                          )}
+                          {dueDateText && (
+                            <div className="flex items-center gap-1 text-[11px] text-zinc-400 mt-1">
+                              <Calendar className="w-3 h-3 opacity-70" />
+                              <span>Термін: до {dueDateText}</span>
+                            </div>
+                          )}
+                        </div>
 
-            {(!activeProject.tickets || activeProject.tickets.length === 0) ? (
-              <p className="text-xs text-zinc-400 italic bg-white dark:bg-zinc-900 p-4 rounded-xl text-center border border-zinc-200 dark:border-zinc-800">
-                Тікетів за цим проектом немає
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {activeProject.tickets.map((t) => (
-                  <div
-                    key={t.id}
-                    className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 border border-zinc-200/80 dark:border-zinc-800 space-y-2 text-xs"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-bold text-zinc-900 dark:text-white">#{t.id}</span>
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                          {t.type}
-                        </span>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                            t.status === 'RESOLVED'
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : t.status === 'IN_REVIEW'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
-                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          }`}
-                        >
-                          {t.status}
-                        </span>
+                        <div className="text-right flex-shrink-0">
+                          <span className="text-xs font-bold text-zinc-900 dark:text-white">
+                            ${Number(m.amount).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <p className="text-zinc-700 dark:text-zinc-300 break-words">
-                      {t.message}
-                    </p>
-
-                    {/* Quick status actions */}
-                    {t.status !== 'RESOLVED' && (
-                      <div className="flex gap-2 pt-1 border-t border-zinc-100 dark:border-zinc-800">
-                        {t.status !== 'IN_REVIEW' && (
+                      {/* Linear Contextual Action Button */}
+                      <div className="pt-1 border-t border-zinc-100 dark:border-zinc-800/80">
+                        {m.status === 'LOCKED' && (
                           <button
                             type="button"
-                            onClick={() => handleTicketReview(t.id)}
-                            className="min-h-[38px] px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors"
+                            onClick={() => handleMilestoneStatusChange(m.id, 'IN_PROGRESS')}
+                            className="w-full min-h-[42px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition-colors"
                           >
-                            Взяти в роботу
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>Розпочати етап</span>
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => handleTicketResolve(t.id)}
-                          className="min-h-[38px] px-3 py-1 rounded-xl bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-semibold shadow-sm transition-colors flex items-center gap-1"
-                        >
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Позначити як вирішено</span>
-                        </button>
+
+                        {m.status === 'IN_PROGRESS' && (
+                          <button
+                            type="button"
+                            onClick={() => handleMilestoneStatusChange(m.id, 'WAITING_APPROVAL')}
+                            className="w-full min-h-[42px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                          >
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Передати на затвердження</span>
+                          </button>
+                        )}
+
+                        {m.status === 'WAITING_APPROVAL' && (
+                          <div className="w-full min-h-[42px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 text-amber-700 dark:text-amber-300 text-xs font-medium">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Очікує підпису клієнта</span>
+                          </div>
+                        )}
+
+                        {m.status === 'APPROVED' && (
+                          <button
+                            type="button"
+                            onClick={() => onViewAct && onViewAct(m)}
+                            className="w-full min-h-[42px] flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-colors"
+                          >
+                            <FileCheck className="w-4 h-4" />
+                            <span>Переглянути акт</span>
+                          </button>
+                        )}
+
+                        {/* Discreet Manual Override Selector */}
+                        <div className="flex items-center justify-between pt-2 text-[11px] text-zinc-400">
+                          <span>Ручна зміна статусу:</span>
+                          <select
+                            value={m.status}
+                            onChange={(e) => handleMilestoneStatusChange(m.id, e.target.value)}
+                            aria-label="Примусово змінити статус етапу"
+                            className="text-[11px] bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg px-2 py-1 focus:outline-none"
+                          >
+                            <option value="LOCKED">Черга</option>
+                            <option value="IN_PROGRESS">В роботі</option>
+                            <option value="WAITING_APPROVAL">Очікує</option>
+                            <option value="APPROVED">Затверджено</option>
+                          </select>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Tickets Management */}
+          {adminTab === 'tickets' && (
+            <div className="space-y-2.5">
+              {tickets.length === 0 ? (
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 text-center border border-zinc-200/80 dark:border-zinc-800 text-zinc-400 text-xs">
+                  <p>Немає створених тікетів за цим проектом</p>
+                </div>
+              ) : (
+                tickets.map((t) => {
+                  const linkedMilestone = t.milestone_id
+                    ? milestones.find((m) => m.id === t.milestone_id)
+                    : null;
+
+                  return (
+                    <div
+                      key={t.id}
+                      className="bg-white dark:bg-zinc-900 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-800 space-y-2.5 text-xs shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-zinc-900 dark:text-white">
+                            #{t.id}
+                          </span>
+                          {getTypeBadge(t.type)}
+                          {getTicketStatusBadge(t.status)}
+                          {linkedMilestone && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200/60 dark:border-zinc-700/60">
+                              Етап #{linkedMilestone.order_index}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <p className="text-zinc-800 dark:text-zinc-200 leading-relaxed break-words">
+                        {t.message}
+                      </p>
+
+                      {t.attachment_url && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => openLink(t.attachment_url)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white min-h-[32px]"
+                          >
+                            <span>Переглянути вкладення</span>
+                            <ExternalLink className="w-3 h-3 opacity-60" />
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Quick status actions */}
+                      {t.status !== 'RESOLVED' && (
+                        <div className="flex gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                          {t.status !== 'IN_REVIEW' && (
+                            <button
+                              type="button"
+                              onClick={() => handleTicketReview(t.id)}
+                              className="min-h-[38px] px-3 py-1 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 text-xs font-semibold transition-colors flex-1"
+                            >
+                              Взяти в роботу
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleTicketResolve(t.id)}
+                            className="min-h-[38px] px-3 py-1 rounded-xl bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-1.5 flex-1"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Позначити як вирішено</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

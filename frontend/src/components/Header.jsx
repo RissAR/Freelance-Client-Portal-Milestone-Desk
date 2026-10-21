@@ -21,9 +21,9 @@ export default function Header({ project, onRefresh, isLoading }) {
   };
 
   return (
-    <header className="space-y-3">
+    <header className="space-y-2.5">
       {/* Apple / Samsung Minimalist Top Bar */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
+      <div className="flex items-center justify-between pb-2 border-b border-zinc-200/80 dark:border-zinc-800/80">
         <span className="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
           {isAdmin ? 'Панель розробника' : 'Панель клієнта'}
         </span>
@@ -32,86 +32,72 @@ export default function Header({ project, onRefresh, isLoading }) {
           onClick={handleRefreshClick}
           disabled={isLoading}
           aria-label="Оновити"
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+          className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
         >
-          <RotateCcw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Project Overview Card (Only for client or when project exists) */}
+      {/* Compact Project Overview Card (Client View) */}
       {project && !isAdmin && (
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-4 sm:p-5 shadow-sm border border-zinc-200/80 dark:border-zinc-800 space-y-4">
-          {/* Project Title and Status */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-1.5 flex-1">
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                В роботі
-              </span>
-              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white leading-tight break-words">
-                {project.title}
-              </h2>
-            </div>
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-3.5 shadow-sm border border-zinc-200/80 dark:border-zinc-800 space-y-2.5">
+          {/* Row 1: Title and Status badge */}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate flex-1">
+              {project.title}
+            </h2>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex-shrink-0">
+              В роботі
+            </span>
           </div>
 
-          {/* Budget & Stats */}
-          <div className="grid grid-cols-2 gap-3 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-            <div>
-              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                Загальний бюджет
-              </p>
-              <p className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white mt-0.5">
-                ${totalBudget.toLocaleString()} <span className="text-xs font-normal text-zinc-400">{currency}</span>
-              </p>
+          {/* Row 2: Budget details and Quick micro-chips */}
+          <div className="flex items-center justify-between gap-2 flex-wrap text-xs">
+            <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 text-[11px]">
+              <span>Бюджет: <strong className="text-zinc-900 dark:text-white font-semibold">${totalBudget.toLocaleString()}</strong></span>
+              <span>•</span>
+              <span>Затверджено: <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">${approvedAmount.toLocaleString()}</strong> ({approvedCount}/{totalMilestones})</span>
             </div>
-            <div>
-              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
-                Затверджено ({approvedCount}/{totalMilestones})
-              </p>
-              <p className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white mt-0.5">
-                ${approvedAmount.toLocaleString()} <span className="text-xs font-normal text-zinc-400">{currency}</span>
-              </p>
-            </div>
+
+            {/* Quick Micro-Chips for Figma / Staging */}
+            {(project.figma_url || project.staging_url) && (
+              <div className="flex items-center gap-1.5">
+                {project.figma_url && (
+                  <button
+                    type="button"
+                    onClick={() => openLink(project.figma_url)}
+                    className="h-7 inline-flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+                  >
+                    <span>Figma</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                )}
+                {project.staging_url && (
+                  <button
+                    type="button"
+                    onClick={() => openLink(project.staging_url)}
+                    className="h-7 inline-flex items-center gap-1 px-2.5 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 transition-colors"
+                  >
+                    <span>Стенд</span>
+                    <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* iOS-Style Clean Progress Bar */}
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center text-xs font-medium">
-              <span className="text-zinc-500 dark:text-zinc-400">Прогрес проекту</span>
-              <span className="text-zinc-900 dark:text-zinc-100 font-semibold">{progress}%</span>
-            </div>
-            <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+          {/* Row 3: Thin Elegant Progress Bar */}
+          <div className="flex items-center gap-2 pt-0.5">
+            <div className="flex-1 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-zinc-900 dark:bg-zinc-100 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${Math.min(Math.max(progress, 0), 100)}%` }}
               />
             </div>
+            <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 w-8 text-right">
+              {progress}%
+            </span>
           </div>
-
-          {/* Quick Action Links: Figma & Staging (Zero Emojis) */}
-          {(project.figma_url || project.staging_url) && (
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-              {project.figma_url && (
-                <button
-                  type="button"
-                  onClick={() => openLink(project.figma_url)}
-                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 transition-colors"
-                >
-                  <span>Figma</span>
-                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-                </button>
-              )}
-              {project.staging_url && (
-                <button
-                  type="button"
-                  onClick={() => openLink(project.staging_url)}
-                  className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700/80 text-zinc-800 dark:text-zinc-200 transition-colors"
-                >
-                  <span>Тестовий стенд</span>
-                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
     </header>

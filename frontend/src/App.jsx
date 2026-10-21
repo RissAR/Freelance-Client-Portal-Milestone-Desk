@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTelegram } from './context/TelegramContext';
 import { api } from './services/api';
 import Header from './components/Header';
+import SegmentedTabs from './components/SegmentedTabs';
 import MilestonesTimeline from './components/MilestonesTimeline';
 import SignatureModal from './components/SignatureModal';
+import SignedActModal from './components/SignedActModal';
 import TicketsSection from './components/TicketsSection';
 import AdminDashboard from './components/AdminDashboard';
 import { Loader2, AlertCircle, RotateCcw, Check } from 'lucide-react';
@@ -18,10 +20,17 @@ export default function App() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null); // { text, type: 'success' | 'error' | 'info' }
 
+  // Client tabs state
+  const [clientTab, setClientTab] = useState('milestones'); // 'milestones' | 'tickets'
+
   // Signature modal state
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
   const [selectedMilestone, setSelectedMilestone] = useState(null);
   const [isSubmittingSignature, setIsSubmittingSignature] = useState(false);
+
+  // Signed act modal state
+  const [isActModalOpen, setIsActModalOpen] = useState(false);
+  const [selectedActMilestone, setSelectedActMilestone] = useState(null);
 
   // Ticket creation state
   const [isCreatingTicket, setIsCreatingTicket] = useState(false);
@@ -123,6 +132,17 @@ export default function App() {
     [selectedMilestone, initData, haptic, showToast, loadClientProject]
   );
 
+  // Signed act modal flow
+  const handleOpenAct = useCallback((milestone) => {
+    setSelectedActMilestone(milestone);
+    setIsActModalOpen(true);
+  }, []);
+
+  const handleCloseAct = useCallback(() => {
+    setIsActModalOpen(false);
+    setSelectedActMilestone(null);
+  }, []);
+
   // Ticket creation flow
   const handleCreateTicket = useCallback(
     async (ticketData) => {
@@ -176,8 +196,44 @@ export default function App() {
     [initData, showToast, loadAdminProjects]
   );
 
+  const openTicketsCount = useMemo(() => {
+    return (project?.tickets || []).filter(
+      (t) => t.status === 'OPEN' || t.status === 'IN_REVIEW'
+    ).length;
+  }, [project?.tickets]);
+
+  const clientTabs = useMemo(
+    () => [
+      {
+        id: 'milestones',
+        label: 'Етапи робіт',
+        count: project?.milestones?.length || 0,
+      },
+      {
+        id: 'tickets',
+        label: 'Правки',
+        count: openTicketsCount,
+        hasBadge: openTicketsCount > 0,
+      },
+    ],
+    [project?.milestones?.length, openTicketsCount]
+  );
+
+  // Selected project for the signed act modal
+  const actProject = useMemo(() => {
+    if (isAdmin) {
+      if (!selectedActMilestone) return adminProjects[0] || null;
+      return (
+        adminProjects.find((p) =>
+          (p.milestones || []).some((m) => m.id === selectedActMilestone.id)
+        ) || adminProjects[0] || null
+      );
+    }
+    return project;
+  }, [isAdmin, adminProjects, selectedActMilestone, project]);
+
   return (
-    <div className="max-w-md mx-auto min-h-screen px-4 py-4 pb-20 overflow-x-hidden space-y-4">
+    <div className="max-w-md mx-auto min-h-screen px-4 py-4 pb-20 overflow-x-hidden space-y-3.5">
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm transition-all duration-300">
@@ -209,7 +265,7 @@ export default function App() {
 
       {/* Main Content Area: Strict Role Isolation */}
       {!isAdmin ? (
-        <main className="space-y-4">
+        <main className="space-y-3.5">
           {isLoading && !project ? (
             <div className="py-16 text-center space-y-2">
               <Loader2 className="w-6 h-6 mx-auto animate-spin text-zinc-400" />
@@ -233,20 +289,32 @@ export default function App() {
             </div>
           ) : project ? (
             <>
-              {/* Milestones timeline */}
-              <MilestonesTimeline
-                milestones={project.milestones || []}
-                currency={project.currency}
-                onOpenSignature={handleOpenSignature}
+              {/* Segmented Tabs for Client */}
+              <SegmentedTabs
+                tabs={clientTabs}
+                activeTab={clientTab}
+                onChange={setClientTab}
               />
 
-              {/* Tickets section */}
-              <TicketsSection
-                tickets={project.tickets || []}
-                milestones={project.milestones || []}
-                onCreateTicket={handleCreateTicket}
-                isCreating={isCreatingTicket}
-              />
+              {/* Tab 1: Milestones timeline */}
+              {clientTab === 'milestones' && (
+                <MilestonesTimeline
+                  milestones={project.milestones || []}
+                  currency={project.currency}
+                  onOpenSignature={handleOpenSignature}
+                  onViewAct={handleOpenAct}
+                />
+              )}
+
+              {/* Tab 2: Tickets section */}
+              {clientTab === 'tickets' && (
+                <TicketsSection
+                  tickets={project.tickets || []}
+                  milestones={project.milestones || []}
+                  onCreateTicket={handleCreateTicket}
+                  isCreating={isCreatingTicket}
+                />
+              )}
             </>
           ) : null}
         </main>
@@ -264,18 +332,27 @@ export default function App() {
               onRefresh={handleRefresh}
               onUpdateMilestoneStatus={handleAdminUpdateMilestoneStatus}
               onUpdateTicketStatus={handleAdminUpdateTicketStatus}
+              onViewAct={handleOpenAct}
             />
           )}
         </main>
       )}
 
-      {/* Signature Modal */}
+      {/* Signature Modal for Signing Waiting Approval Milestones */}
       <SignatureModal
         isOpen={isSignatureModalOpen}
         onClose={handleCloseSignature}
         milestone={selectedMilestone}
         onConfirm={handleConfirmSignature}
         isSubmitting={isSubmittingSignature}
+      />
+
+      {/* Signed Act Modal for Viewing Approved Milestones */}
+      <SignedActModal
+        isOpen={isActModalOpen}
+        onClose={handleCloseAct}
+        milestone={selectedActMilestone}
+        project={actProject}
       />
 
       {/* Minimalist Footer */}

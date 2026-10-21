@@ -1,8 +1,13 @@
 import React from 'react';
 import { useTelegram } from '../context/TelegramContext';
-import { Check, Clock, Lock, Play, PenLine } from 'lucide-react';
+import { Check, Clock, Lock, Play, PenLine, FileCheck, Calendar } from 'lucide-react';
 
-export default function MilestonesTimeline({ milestones = [], currency = 'USD', onOpenSignature }) {
+export default function MilestonesTimeline({
+  milestones = [],
+  currency = 'USD',
+  onOpenSignature,
+  onViewAct,
+}) {
   const { haptic } = useTelegram();
 
   // Sort milestones by order_index
@@ -11,6 +16,23 @@ export default function MilestonesTimeline({ milestones = [], currency = 'USD', 
   const handleSignClick = (milestone) => {
     haptic('medium');
     onOpenSignature(milestone);
+  };
+
+  const handleActClick = (milestone) => {
+    haptic('light');
+    if (onViewAct) {
+      onViewAct(milestone);
+    }
+  };
+
+  const formatDueDate = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long' });
+    } catch {
+      return dateStr;
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -49,20 +71,12 @@ export default function MilestonesTimeline({ milestones = [], currency = 'USD', 
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-          Етапи реалізації
-        </h3>
-        <span className="text-xs font-medium text-zinc-400">
-          {sortedMilestones.length}
-        </span>
-      </div>
-
       <div className="space-y-3">
         {sortedMilestones.map((m) => {
           const isWaiting = m.status === 'WAITING_APPROVAL';
           const isApproved = m.status === 'APPROVED';
           const isLocked = m.status === 'LOCKED';
+          const dueDateText = formatDueDate(m.due_date);
 
           return (
             <div
@@ -102,6 +116,12 @@ export default function MilestonesTimeline({ milestones = [], currency = 'USD', 
                         {m.description}
                       </p>
                     )}
+                    {dueDateText && (
+                      <div className="flex items-center gap-1 text-[11px] text-zinc-400 mt-1.5">
+                        <Calendar className="w-3 h-3 opacity-70" />
+                        <span>Термін: до {dueDateText}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -115,25 +135,23 @@ export default function MilestonesTimeline({ milestones = [], currency = 'USD', 
                 </div>
               </div>
 
-              {/* Status & Signature Preview */}
+              {/* Status and Clickable Signed Act */}
               <div className="mt-3.5 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-between flex-wrap gap-2">
                 <div>{getStatusBadge(m.status)}</div>
 
-                {isApproved && m.signature_data && (
-                  <div className="flex items-center gap-1.5 py-0.5 px-2 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/60 dark:border-zinc-700/60">
-                    <img
-                      src={m.signature_data}
-                      alt="Signature"
-                      className="h-4 w-auto max-w-[70px] object-contain invert-0 dark:invert"
-                    />
-                    <span className="text-[10px] font-medium text-zinc-400">
-                      Підпис клієнта
-                    </span>
-                  </div>
+                {isApproved && (
+                  <button
+                    type="button"
+                    onClick={() => handleActClick(m)}
+                    className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-zinc-100 hover:bg-zinc-200/80 dark:bg-zinc-800 dark:hover:bg-zinc-700 border border-zinc-200/60 dark:border-zinc-700/60 text-xs font-medium text-zinc-700 dark:text-zinc-300 transition-colors"
+                  >
+                    <FileCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <span>Акт робіт</span>
+                  </button>
                 )}
               </div>
 
-              {/* Apple-style Action Button for WAITING_APPROVAL */}
+              {/* Action Button for WAITING_APPROVAL */}
               {isWaiting && (
                 <div className="mt-3 pt-3 border-t border-amber-100 dark:border-amber-950/60">
                   <button
